@@ -8,7 +8,6 @@ Avvio rapido:
 Poi apri http://127.0.0.1:5000
 """
 
-import os
 from datetime import datetime
 from functools import wraps
 
@@ -37,13 +36,14 @@ from models import (
     Trade,
     db,
 )
+from config import load_stripe_key
 from plans import ALL_SYMBOLS, PLAN_ORDER, PLANS, get_plan, plan_symbols
 from security import decrypt, encrypt, mask
 
-# La chiave segreta Stripe NON va scritta nel codice (finirebbe su git/GitHub).
-# Impostala come variabile d'ambiente prima di avviare l'app:
-#     export STRIPE_SECRET_KEY="sk_live_..."   (Windows: set STRIPE_SECRET_KEY=...)
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+# La chiave segreta Stripe viene letta da `instance/stripe.key` (o dalla
+# variabile d'ambiente STRIPE_SECRET_KEY). NON va scritta qui nel codice, che
+# è versionato e finirebbe su git/GitHub. Vedi config.load_stripe_key().
+stripe.api_key = load_stripe_key()
 
 
 def create_app() -> Flask:
@@ -119,8 +119,8 @@ def register_routes(app: Flask):
             return redirect(url_for("index"))
         if not stripe.api_key:
             flash(
-                "Pagamenti non configurati: imposta la variabile d'ambiente "
-                "STRIPE_SECRET_KEY prima di avviare l'app.",
+                "Pagamenti non configurati: incolla la tua Stripe Secret Key nel "
+                "file instance/stripe.key e riavvia l'app.",
                 "error",
             )
             return redirect(url_for("index"))

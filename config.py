@@ -33,6 +33,32 @@ def load_or_create_secret(name: str, nbytes: int = 32) -> bytes:
     return value
 
 
+def load_stripe_key() -> str | None:
+    """Restituisce la Stripe Secret Key da usare per i pagamenti.
+
+    Ordine di ricerca (la prima che trova vince):
+      1. variabile d'ambiente STRIPE_SECRET_KEY (comoda in produzione/hosting);
+      2. file locale `instance/stripe.key` — incolla qui dentro la tua chiave,
+         UNA VOLTA, e funziona per sempre. Questo file è ignorato da git
+         (vedi .gitignore) quindi NON finisce mai nel repository/GitHub.
+
+    In questo modo la chiave sta "hardcoded" in un unico posto fisso, senza
+    dover impostare variabili d'ambiente ad ogni avvio, ma resta fuori dal
+    codice sorgente versionato.
+    """
+    env_key = os.environ.get("STRIPE_SECRET_KEY")
+    if env_key and env_key.strip():
+        return env_key.strip()
+
+    key_file = INSTANCE_DIR / "stripe.key"
+    if key_file.exists():
+        content = key_file.read_text(encoding="utf-8").strip()
+        if content:
+            return content
+
+    return None
+
+
 class Config:
     SECRET_KEY = load_or_create_secret("flask_secret.key")
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{(INSTANCE_DIR / 'vcriptov.db').as_posix()}"

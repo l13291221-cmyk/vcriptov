@@ -14,10 +14,11 @@ del codice di attivazione (license key)**, **pagina Impostazioni grafica** e
 > commerciale collega le API reali dell'exchange e verifica i requisiti
 > legali/regolamentari per la vendita di software finanziario nel tuo paese.
 
-> 🔑 **La chiave segreta Stripe NON è nel codice.** Va fornita tramite la
-> variabile d'ambiente `STRIPE_SECRET_KEY` (vedi sotto). Non incollarla mai in
-> un file tracciato da git: finirebbe nella cronologia del repository. Se una
-> chiave `sk_live_...` viene esposta, revocala subito dal cruscotto Stripe
+> 🔑 **La chiave segreta Stripe NON è nel codice.** Incollala nel file locale
+> `instance/stripe.key` (ignorato da git) — oppure usa la variabile d'ambiente
+> `STRIPE_SECRET_KEY`. Vedi "Configurare Stripe" sotto. Non incollarla mai in un
+> file tracciato da git: finirebbe nella cronologia del repository. Se una chiave
+> `sk_live_...` viene esposta, revocala subito dal cruscotto Stripe
 > (Developers → API keys → Roll key).
 
 ---
@@ -123,16 +124,31 @@ http://127.0.0.1:5000
 
 1. Crea un account su [stripe.com](https://stripe.com) e recupera la tua chiave
    segreta da **Developers → API keys**.
-2. Impostala come variabile d'ambiente **prima** di avviare l'app:
+2. **Modo consigliato — file locale (la scrivi una volta e basta):**
+   crea il file `instance/stripe.key` e incolla dentro **solo** la chiave:
+   ```bash
+   echo "sk_live_LA_TUA_CHIAVE" > instance/stripe.key   # una sola riga, niente altro
+   python app.py
+   ```
+   Questo file è **ignorato da git** (vedi `.gitignore`): la chiave resta sul tuo
+   computer/server e **non finisce mai su GitHub**. Non serve alcuna variabile
+   d'ambiente e l'avviso rosso "Pagamenti non configurati" sparisce.
+3. **In alternativa** (utile su hosting come Render/Railway/Heroku) puoi usare la
+   variabile d'ambiente, che ha la precedenza sul file:
    ```bash
    export STRIPE_SECRET_KEY="sk_live_..."     # Windows: set STRIPE_SECRET_KEY=sk_live_...
-   python app.py
    ```
    Per i test usa la chiave `sk_test_...` e le [carte di test Stripe](https://docs.stripe.com/testing)
    (es. `4242 4242 4242 4242`).
-3. Il flusso: l'utente sceglie il piano → viene reindirizzato al **Checkout
+4. Il flusso: l'utente sceglie il piano → viene reindirizzato al **Checkout
    ospitato da Stripe** → dopo il pagamento torna su `/checkout/success`, dove
    l'app **verifica l'esito con Stripe** e attiva la licenza mostrando il codice.
+
+> ⚠️ **Non scrivere mai la chiave `sk_live_...` dentro `app.py`, `config.py` o
+> qualsiasi file versionato:** finirebbe nella cronologia di git e su GitHub, che
+> la revocherebbe automaticamente. Usa `instance/stripe.key` o la variabile
+> d'ambiente. Se una `sk_live` viene esposta, revocala subito da Stripe
+> (Developers → API keys → **Roll key**).
 
 > Per maggiore robustezza in produzione conviene aggiungere anche un **webhook**
 > Stripe (`checkout.session.completed`) come fonte di verità del pagamento,
