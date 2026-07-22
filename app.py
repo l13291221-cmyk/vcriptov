@@ -8,9 +8,11 @@ Avvio rapido:
 Poi apri http://127.0.0.1:5000
 """
 
+import os
 from datetime import datetime
 from functools import wraps
 
+import stripe
 from flask import (
     Flask,
     abort,
@@ -37,6 +39,11 @@ from models import (
 )
 from plans import ALL_SYMBOLS, PLAN_ORDER, PLANS, get_plan, plan_symbols
 from security import decrypt, encrypt, mask
+
+# La chiave segreta Stripe NON va scritta nel codice (finirebbe su git/GitHub).
+# Impostala come variabile d'ambiente prima di avviare l'app:
+#     export STRIPE_SECRET_KEY="sk_live_..."   (Windows: set STRIPE_SECRET_KEY=...)
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 
 
 def create_app() -> Flask:
@@ -95,6 +102,11 @@ def register_routes(app: Flask):
 
     @app.route("/checkout", methods=["POST"])
     def checkout():
+        """Avvia un pagamento REALE tramite Stripe Checkout.
+
+        La licenza viene creata subito ma resta DISATTIVATA (active=False):
+        diventa valida solo dopo la conferma del pagamento (rotta di successo).
+        """
         email = (request.form.get("email") or "").strip().lower()
         plan_id = (request.form.get("plan") or "").strip()
         plan = get_plan(plan_id)
@@ -105,23 +117,90 @@ def register_routes(app: Flask):
         if not plan:
             flash("Piano non valido.", "error")
             return redirect(url_for("index"))
+        if not stripe.api_key:
+            flash(
+                "Pagamenti non configurati: imposta la variabile d'ambiente "
+                "STRIPE_SECRET_KEY prima di avviare l'app.",
+                "error",
+            )
+            return redirect(url_for("index"))
 
-        # ---- Punto di integrazione del pagamento reale ----
-        # Qui, in produzione, si crea una sessione di pagamento (Stripe,
-        # PayPal, ...) e si genera la licenza SOLO dopo l'esito positivo.
-        # In questa versione dimostrativa il "pagamento" è simulato e la
-        # licenza viene emessa immediatamente.
+        # Licenza pre-creata ma non attiva finché il pagamento non è confermato.
         key = generate_key(email, plan_id)
-        lic = License(email=email, plan=plan_id, key=key, active=True, activated=False)
+        lic = License(email=email, plan=plan_id, key=key, active=False, activated=False)
         db.session.add(lic)
         db.session.commit()
 
+        # Piani mensili -> abbonamento ricorrente; Lifetime -> pagamento unico.
+        price_data = {
+            "currency": "eur",
+            "product_data": {"name": f"VCriptoV — Piano {plan['name']}"},
+            "unit_amount": int(plan["price_eur"]) * 100,  # in centesimi
+        }
+        if not plan["lifetime"]:
+            price_data["recurring"] = {"interval": "month"}
+
+        try:
+            checkout_session = stripe.checkout.Session.create(
+                mode="subscription" if not plan["lifetime"] else "payment",
+                customer_email=email,
+                client_reference_id=str(lic.id),
+                line_items=[{"price_data": price_data, "quantity": 1}],
+                metadata={"license_id": str(lic.id), "plan": plan_id, "email": email},
+                success_url=url_for("checkout_success", _external=True)
+                + "?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url=url_for("checkout_cancel", _external=True),
+            )
+        except stripe.error.StripeError as exc:
+            db.session.delete(lic)
+            db.session.commit()
+            app.logger.error("Errore Stripe alla creazione della sessione: %s", exc)
+            flash("Errore nell'avvio del pagamento. Riprova.", "error")
+            return redirect(url_for("index"))
+
+        # Reindirizza l'utente alla pagina di pagamento ospitata da Stripe.
+        return redirect(checkout_session.url, code=303)
+
+    @app.route("/checkout/success")
+    def checkout_success():
+        """Rotta di ritorno da Stripe: verifica il pagamento e attiva la licenza."""
+        session_id = request.args.get("session_id")
+        if not session_id or not stripe.api_key:
+            return redirect(url_for("index"))
+
+        try:
+            cs = stripe.checkout.Session.retrieve(session_id)
+        except stripe.error.StripeError as exc:
+            app.logger.error("Errore Stripe nel recupero della sessione: %s", exc)
+            flash("Impossibile verificare il pagamento.", "error")
+            return redirect(url_for("index"))
+
+        # Solo un pagamento effettivamente riuscito attiva la licenza.
+        if cs.get("payment_status") != "paid":
+            flash("Pagamento non completato.", "error")
+            return redirect(url_for("index"))
+
+        lic = db.session.get(License, int(cs.get("client_reference_id") or 0))
+        if not lic:
+            flash("Licenza non trovata per questo pagamento.", "error")
+            return redirect(url_for("index"))
+
+        # Idempotente: se ricarichi la pagina non si ri-attiva/duplica nulla.
+        if not lic.active:
+            lic.active = True
+            db.session.commit()
+
         return render_template(
             "checkout.html",
-            plan=plan,
-            email=email,
-            license_key=key,
+            plan=get_plan(lic.plan),
+            email=lic.email,
+            license_key=lic.key,
         )
+
+    @app.route("/checkout/cancel")
+    def checkout_cancel():
+        flash("Pagamento annullato. Puoi riprovare quando vuoi.", "error")
+        return redirect(url_for("index"))
 
     # ---------- Attivazione licenza ----------
     @app.route("/activate", methods=["GET", "POST"])

@@ -9,11 +9,16 @@ del codice di attivazione (license key)**, **pagina Impostazioni grafica** e
 > ⚠️ **Avviso importante.** Questo è un software **dimostrativo/didattico**.
 > Il motore esegue **trading simulato (paper trading)** su prezzi generati
 > internamente: **non invia ordini reali** ad alcun exchange e **non
-> costituisce consulenza finanziaria**. Il flusso di pagamento è **simulato**.
-> Prima di qualsiasi uso commerciale devi integrare un gateway di pagamento
-> reale (Stripe/PayPal), collegare le API reali dell'exchange, e verificare i
-> requisiti legali/regolamentari per la vendita di software finanziario nel
-> tuo paese.
+> costituisce consulenza finanziaria**. I pagamenti sono invece **reali**,
+> gestiti tramite **Stripe** (vedi configurazione sotto). Prima di un uso
+> commerciale collega le API reali dell'exchange e verifica i requisiti
+> legali/regolamentari per la vendita di software finanziario nel tuo paese.
+
+> 🔑 **La chiave segreta Stripe NON è nel codice.** Va fornita tramite la
+> variabile d'ambiente `STRIPE_SECRET_KEY` (vedi sotto). Non incollarla mai in
+> un file tracciato da git: finirebbe nella cronologia del repository. Se una
+> chiave `sk_live_...` viene esposta, revocala subito dal cruscotto Stripe
+> (Developers → API keys → Roll key).
 
 ---
 
@@ -110,12 +115,32 @@ http://127.0.0.1:5000
 
 | Variabile | Default | Descrizione |
 |-----------|---------|-------------|
+| `STRIPE_SECRET_KEY` | *(nessuno)* | **Obbligatoria per i pagamenti.** Chiave segreta Stripe (`sk_live_...` in produzione, `sk_test_...` per i test) |
 | `BOT_INTERVAL_SECONDS` | `30` | Intervallo di aggiornamento del motore |
 | `STARTING_EQUITY` | `10000` | Capitale virtuale iniziale per licenza |
 
-Esempio (tick più veloce per fare test):
+### Configurare Stripe (pagamenti reali)
+
+1. Crea un account su [stripe.com](https://stripe.com) e recupera la tua chiave
+   segreta da **Developers → API keys**.
+2. Impostala come variabile d'ambiente **prima** di avviare l'app:
+   ```bash
+   export STRIPE_SECRET_KEY="sk_live_..."     # Windows: set STRIPE_SECRET_KEY=sk_live_...
+   python app.py
+   ```
+   Per i test usa la chiave `sk_test_...` e le [carte di test Stripe](https://docs.stripe.com/testing)
+   (es. `4242 4242 4242 4242`).
+3. Il flusso: l'utente sceglie il piano → viene reindirizzato al **Checkout
+   ospitato da Stripe** → dopo il pagamento torna su `/checkout/success`, dove
+   l'app **verifica l'esito con Stripe** e attiva la licenza mostrando il codice.
+
+> Per maggiore robustezza in produzione conviene aggiungere anche un **webhook**
+> Stripe (`checkout.session.completed`) come fonte di verità del pagamento,
+> oltre al redirect di successo.
+
+Esempio (tick più veloce per fare test, con chiave di test):
 ```bash
-BOT_INTERVAL_SECONDS=5 python app.py
+STRIPE_SECRET_KEY=sk_test_xxx BOT_INTERVAL_SECONDS=5 python app.py
 ```
 
 ## 🔐 Note sulla sicurezza
@@ -128,9 +153,9 @@ BOT_INTERVAL_SECONDS=5 python app.py
   permessi `0600`.
 
 ## 🧱 Passaggi per andare in produzione
-1. **Pagamenti reali:** sostituisci la sezione simulata in `app.py` (rotta
-   `/checkout`) con una sessione Stripe/PayPal; genera la licenza solo dopo il
-   webhook di pagamento riuscito.
+1. **Pagamenti reali:** già integrati con **Stripe Checkout** (rotta
+   `/checkout` + `/checkout/success`). Per la massima robustezza aggiungi un
+   webhook `checkout.session.completed` come conferma definitiva del pagamento.
 2. **Trading reale:** in `market.py` collega il ticker reale dell'exchange e in
    `bot.py` sostituisci le operazioni simulate con ordini reali via API
    (usando le chiavi salvate dall'utente). Testa sempre prima in *sandbox*.
