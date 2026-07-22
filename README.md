@@ -69,7 +69,25 @@ vcriptov/
 Il database SQLite e i segreti generati automaticamente vengono creati nella
 cartella `instance/` (ignorata da git).
 
-## 🚀 Avvio passo dopo passo
+## ⚡ Avvio facile (consigliato, un solo passaggio)
+
+Non serve conoscere Python o la riga di comando. Nella cartella del progetto:
+
+- **Windows:** fai **doppio click su `start.bat`**.
+- **Mac / Linux:** fai doppio click su `start.sh` (oppure apri il Terminale nella
+  cartella e scrivi `bash start.sh`).
+
+Lo script fa tutto da solo: installa quello che serve, la **prima volta ti chiede
+la tua Stripe Secret Key** (la incolli e premi Invio — viene salvata in
+`instance/stripe.key`, un file che resta solo sul tuo computer), e poi apre il
+sito. Quando vedi il messaggio, apri il browser su **http://127.0.0.1:5000**.
+
+> Prerequisito unico: avere **Python 3** installato (https://www.python.org/downloads/;
+> su Windows spunta *"Add Python to PATH"* durante l'installazione).
+
+---
+
+## 🚀 Avvio passo dopo passo (manuale)
 
 ### 1. Requisiti
 - Python 3.10+ (testato su 3.11).
