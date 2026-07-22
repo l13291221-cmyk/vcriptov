@@ -34,17 +34,24 @@ echo Installo o aggiorno le dipendenze. Puo' metterci 1-2 minuti, attendi...
 "%VENV_PY%" -m pip install -r requirements.txt >> "%LOG%" 2>&1
 if errorlevel 1 goto pip_error
 
-REM --- 3. Chiave Stripe, chiesta una sola volta ---
+REM --- 3. Chiave Stripe, chiesta una sola volta (e ricontrollata) ---
 if not exist "instance" mkdir instance
-if exist "instance\stripe.key" goto run
+if not exist "instance\stripe.key" goto askkey
+REM La chiave valida inizia con "sk_". Se il file contiene altro, la richiedo.
+findstr /b "sk_" "instance\stripe.key" >nul 2>nul
+if errorlevel 1 goto askkey
+goto run
+
+:askkey
 echo.
 echo ----------------------------------------------
 echo Incolla la tua STRIPE SECRET KEY e premi Invio.
-echo sk_live per soldi veri, sk_test per le prove.
+echo Deve iniziare con sk_test_ per le prove oppure sk_live_ per i soldi veri.
+echo NON la chiave che inizia con pk_ : quella e' sbagliata.
 echo ----------------------------------------------
 set /p STRIPE_KEY="Chiave: "
 if "%STRIPE_KEY%"=="" goto no_key
->"instance\stripe.key" echo|set /p="%STRIPE_KEY%"
+>"instance\stripe.key" echo %STRIPE_KEY%
 echo Chiave salvata. Non te la chiedero' piu'.
 
 :run
