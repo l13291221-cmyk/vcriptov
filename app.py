@@ -180,8 +180,10 @@ def register_routes(app: Flask):
         except stripe.error.StripeError as exc:
             db.session.delete(lic)
             db.session.commit()
+            # Mostra il motivo REALE di Stripe, così l'errore è diagnosticabile.
+            reason = getattr(exc, "user_message", None) or str(exc)
             app.logger.error("Errore Stripe alla creazione della sessione: %s", exc)
-            flash("Errore nell'avvio del pagamento. Riprova.", "error")
+            flash(f"Errore Stripe: {reason}", "error")
             return redirect(url_for("index"))
 
         # Reindirizza l'utente alla pagina di pagamento ospitata da Stripe.
