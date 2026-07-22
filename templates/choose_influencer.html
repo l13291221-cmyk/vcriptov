@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Da dove arrivi? — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="brand-row">
+    <div class="brand-logo">📣</div>
+    <div class="brand-name">Ultima cosa!</div>
+  </div>
+  <p class="lead">Da quale influencer hai conosciuto VCriptoV? Aiutaci a
+  capire da dove arrivi.</p>
+
+  <form method="POST" action="{{ url_for('choose_influencer') }}">
+    <div class="influencer-grid">
+      {% for inf in influencers %}
+      <label class="influencer-opt">
+        <input type="radio" name="influencer_slot" value="{{ inf.slot }}" required hidden />
+        <span class="influencer-dot"></span>
+        <span>{{ inf.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary btn-block" style="margin-top:16px;">
+      Entra nella dashboard →
+    </button>
+  </form>
+</div>
+
+<script>
+  document.querySelectorAll('.influencer-opt').forEach((o) => {
+    o.addEventListener('click', () => {
+      document.querySelectorAll('.influencer-opt').forEach((x) => x.classList.remove('selected'));
+      o.classList.add('selected');
+      o.querySelector('input').checked = true;
+    });
+  });
+</script>
+{% endblock %}

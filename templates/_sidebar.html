@@ -9,10 +9,15 @@
     <a href="{{ url_for('settings_view') }}" class="nav-link {% if request.endpoint == 'settings_view' %}active{% endif %}">
       ⚙️ Impostazioni
     </a>
+    {% if is_admin %}
+    <a href="{{ url_for('admin') }}" class="nav-link {% if request.endpoint == 'admin' %}active{% endif %}">
+      👑 Amministrazione
+    </a>
+    {% endif %}
     <a href="{{ url_for('logout') }}" class="nav-link">🚪 Esci</a>
     <div class="side-foot">
-      <span class="plan-pill">{{ plan.name }}</span>
-      <div>{{ license.email }}</div>
-      <div style="margin-top:6px;opacity:.7;">© VCriptoV · demo</div>
+      {% if plan %}<span class="plan-pill">{{ plan.name }}</span>{% endif %}
+      {% if license %}<div>{{ license.email }}</div>{% endif %}
+      <div style="margin-top:6px;opacity:.7;">© VCriptoV</div>
     </div>
   </aside>

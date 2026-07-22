@@ -25,6 +25,7 @@ from flask import (
     url_for,
 )
 
+from admin import ADMIN_EMAIL, check_admin_password
 from bot import init_engine
 from config import Config
 from exchange_account import account_snapshot
@@ -33,6 +34,7 @@ from market import MARKET_EXCHANGE, market
 from notify import send_telegram
 from models import (
     EquityPoint,
+    Influencer,
     License,
     Portfolio,
     Setting,
@@ -59,21 +61,38 @@ def ensure_schema():
     trading reale (SQLite non le crea da solo su una tabella già esistente)."""
     from sqlalchemy import text
 
-    new_cols = {
+    settings_cols = {
         "live_trading": "BOOLEAN DEFAULT 0",
         "max_order_eur": "FLOAT DEFAULT 20.0",
         "stop_loss_pct": "FLOAT DEFAULT 8.0",
         "take_profit_pct": "FLOAT DEFAULT 15.0",
     }
+    license_cols = {
+        "paid": "BOOLEAN DEFAULT 0",
+        "influencer_slot": "INTEGER",
+    }
     try:
         with db.engine.begin() as conn:
             existing = {row[1] for row in conn.execute(text("PRAGMA table_info(settings)"))}
-            for col, ddl in new_cols.items():
+            for col, ddl in settings_cols.items():
                 if col not in existing:
                     conn.execute(text(f"ALTER TABLE settings ADD COLUMN {col} {ddl}"))
+            existing_l = {row[1] for row in conn.execute(text("PRAGMA table_info(licenses)"))}
+            for col, ddl in license_cols.items():
+                if col not in existing_l:
+                    conn.execute(text(f"ALTER TABLE licenses ADD COLUMN {col} {ddl}"))
     except Exception:
         # Se qualcosa va storto (es. DB nuovo), create_all ha già fatto il lavoro.
         pass
+
+    # Crea i 5 influencer se non esistono ancora.
+    try:
+        for slot in range(1, 6):
+            if not db.session.get(Influencer, slot):
+                db.session.add(Influencer(slot=slot, name=f"Influencer {slot}"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 def create_app() -> Flask:
@@ -115,12 +134,42 @@ def login_required(view):
     return wrapper
 
 
+def admin_required(view):
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if not session.get("is_admin"):
+            return redirect(url_for("admin_login"))
+        return view(*args, **kwargs)
+
+    return wrapper
+
+
+def ensure_admin_license():
+    """Crea (una volta) la licenza del creatore: accesso Lifetime gratuito."""
+    lic = License.query.filter_by(email=ADMIN_EMAIL).first()
+    if not lic:
+        lic = License(
+            email=ADMIN_EMAIL, plan="lifetime",
+            key=generate_key(ADMIN_EMAIL, "lifetime"),
+            active=True, activated=True, activated_at=datetime.utcnow(),
+            paid=False, influencer_slot=0,
+        )
+        db.session.add(lic)
+        db.session.flush()
+        db.session.add(Setting(license_id=lic.id, contact_email=ADMIN_EMAIL))
+        db.session.commit()
+    return lic
+
+
 # ------------------------------------------------------------------ routes
 def register_routes(app: Flask):
 
     @app.context_processor
     def inject_globals():
-        return {"now": datetime.utcnow(), "plans": PLANS, "asset_v": ASSET_VERSION}
+        return {
+            "now": datetime.utcnow(), "plans": PLANS, "asset_v": ASSET_VERSION,
+            "is_admin": session.get("is_admin", False),
+        }
 
     # ---------- Paywall / scelta piano ----------
     @app.route("/")
@@ -226,7 +275,8 @@ def register_routes(app: Flask):
         # Idempotente: se ricarichi la pagina non si ri-attiva/duplica nulla.
         if not lic.active:
             lic.active = True
-            db.session.commit()
+        lic.paid = True  # pagamento reale confermato
+        db.session.commit()
 
         return render_template(
             "checkout.html",
@@ -274,14 +324,102 @@ def register_routes(app: Flask):
             session.clear()
             session["license_id"] = lic.id
             flash(f"Benvenuto! Piano {get_plan(lic.plan)['name']} attivato.", "success")
+            # Prima di entrare, chiediamo da quale influencer arriva.
+            if lic.influencer_slot is None:
+                return redirect(url_for("choose_influencer"))
             return redirect(url_for("dashboard"))
 
         return render_template("activate.html")
+
+    @app.route("/choose-influencer", methods=["GET", "POST"])
+    @login_required
+    def choose_influencer():
+        lic = current_license()
+        if lic.influencer_slot is not None:
+            return redirect(url_for("dashboard"))
+        influencers = Influencer.query.order_by(Influencer.slot).all()
+        if request.method == "POST":
+            try:
+                slot = int(request.form.get("influencer_slot", 0))
+            except (ValueError, TypeError):
+                slot = 0
+            if 1 <= slot <= 5:
+                lic.influencer_slot = slot
+                db.session.commit()
+                return redirect(url_for("dashboard"))
+            flash("Scegli da dove arrivi.", "error")
+        return render_template("choose_influencer.html", influencers=influencers)
 
     @app.route("/logout")
     def logout():
         session.clear()
         return redirect(url_for("index"))
+
+    # ---------- Area creatore (admin) ----------
+    @app.route("/admin/login", methods=["GET", "POST"])
+    def admin_login():
+        if request.method == "POST":
+            if check_admin_password(request.form.get("password", "")):
+                lic = ensure_admin_license()
+                session.clear()
+                session["license_id"] = lic.id
+                session["is_admin"] = True
+                return redirect(url_for("admin"))
+            flash("Password errata.", "error")
+            return redirect(url_for("admin_login"))
+        return render_template("admin_login.html")
+
+    @app.route("/admin")
+    @admin_required
+    def admin():
+        influencers = {i.slot: i.name for i in Influencer.query.all()}
+        subs = (
+            License.query.filter(License.email != ADMIN_EMAIL, License.activated == True)  # noqa: E712
+            .order_by(License.created_at.desc())
+            .all()
+        )
+        active = [s for s in subs if s.active]
+        revenue = sum(get_plan(s.plan)["price_eur"] for s in active if s.paid)
+
+        # Conteggi per piano e per influencer.
+        per_plan = {}
+        per_influencer = {slot: 0 for slot in range(1, 6)}
+        for s in active:
+            per_plan[s.plan] = per_plan.get(s.plan, 0) + 1
+            if s.influencer_slot in per_influencer:
+                per_influencer[s.influencer_slot] += 1
+
+        rows = [{
+            "email": s.email, "plan": get_plan(s.plan)["name"],
+            "price": get_plan(s.plan)["price_eur"], "paid": s.paid,
+            "influencer": influencers.get(s.influencer_slot, "—"),
+            "date": s.created_at.strftime("%d/%m/%Y") if s.created_at else "—",
+        } for s in active]
+
+        return render_template(
+            "admin.html",
+            license=current_license(),
+            plan=get_plan("lifetime"),
+            revenue=revenue,
+            active_count=len(active),
+            per_plan={get_plan(p)["name"]: n for p, n in per_plan.items()},
+            influencers=influencers,
+            per_influencer={influencers[k]: v for k, v in per_influencer.items()},
+            rows=rows,
+        )
+
+    @app.route("/admin/rename-influencer", methods=["POST"])
+    @admin_required
+    def rename_influencer():
+        for slot in range(1, 6):
+            name = (request.form.get(f"name_{slot}") or "").strip()
+            if name:
+                inf = db.session.get(Influencer, slot)
+                if inf:
+                    inf.name = name[:120]
+        db.session.commit()
+        flash("Nomi influencer aggiornati.", "success")
+        return redirect(url_for("admin"))
 
     # ---------- Dashboard ----------
     @app.route("/dashboard")

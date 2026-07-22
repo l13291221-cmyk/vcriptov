@@ -235,3 +235,18 @@ canvas { max-width: 100%; }
    all'infinito (grafico enorme + pagina che lampeggia bianca). */
 .chart-box { position: relative; height: 240px; width: 100%; }
 .chart-placeholder { display: none; text-align: center; color: var(--muted); padding: 40px 20px; font-size: 14px; }
+.creator-btn {
+  position: absolute; top: 18px; right: 20px; padding: 8px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--card); color: var(--muted);
+  font-size: 13px; font-weight: 600;
+}
+.creator-btn:hover { border-color: var(--brand); color: var(--text); }
+.influencer-grid { display: grid; gap: 10px; margin-top: 8px; }
+.influencer-opt {
+  display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--bg-soft); cursor: pointer; font-weight: 600;
+}
+.influencer-opt:hover { border-color: var(--brand); }
+.influencer-opt.selected { border-color: var(--brand); box-shadow: 0 0 0 2px rgba(79,140,255,.3); }
+.influencer-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); display: inline-grid; place-items: center; }
+.influencer-opt.selected .influencer-dot::after { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--brand); }

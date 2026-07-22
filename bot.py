@@ -76,11 +76,12 @@ class TradingEngine:
         self.tick_count += 1
 
     def _process_license(self, lic: License, prices: dict[str, float]):
-        """Nessun paper trading: il bot NON genera più numeri/operazioni finti.
-        Se il TRADING REALE è acceso, manda i segnali interattivi su Telegram;
-        altrimenti non fa nulla (la dashboard mostra i dati reali di Kraken)."""
+        """Manda automaticamente i segnali interattivi su Telegram (senza che
+        l'utente scriva). Bastano Telegram collegato: se il TRADING REALE è
+        acceso, toccando "Investi" l'ordine parte davvero su Kraken; altrimenti
+        il segnale è solo informativo. Nessun paper trading, nessun dato finto."""
         settings = lic.settings
-        if not (settings and settings.live_trading and self._telegram_ready(lic, settings)):
+        if not (settings and self._telegram_ready(lic, settings)):
             return
 
         fast = settings.fast_ma or 5
@@ -236,7 +237,11 @@ class TradingEngine:
 
         if action == "invest":
             if not settings.live_trading:
-                answer_callback(token, cq_id, "Trading reale disattivato")
+                answer_callback(token, cq_id, "Attiva il Trading reale e collega Kraken per investire davvero")
+                if msg_id:
+                    edit_message(token, chat_id, msg_id,
+                                 "ℹ️ Per investire davvero attiva il <b>Trading reale</b> e collega "
+                                 "il tuo Kraken nelle Impostazioni del sito. (Segnale solo informativo.)")
                 return
             answer_callback(token, cq_id, "Eseguo l'ordine…")
             result = place_signal_order(

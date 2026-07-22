@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Amministrazione — VCriptoV{% endblock %}
+{% block body_class %}app-body{% endblock %}
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="app">
+  {% include "_sidebar.html" %}
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1>Amministrazione</h1>
+        <div class="hint">Pannello riservato al creatore</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="label">Guadagno dagli abbonamenti</div>
+        <div class="value pos">{{ "%.0f"|format(revenue) }}€</div>
+        <div class="sub">solo abbonamenti pagati (no demo)</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Abbonamenti attivi</div>
+        <div class="value">{{ active_count }}</div>
+        <div class="sub">
+          {% for name, n in per_plan.items() %}{{ name }}: {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h2>Utenti per influencer</h2></div>
+        <div class="chart-box"><canvas id="infChart"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Nomi degli influencer</h2></div>
+        <p class="hint">Cambia i nomi qui: verranno usati ovunque e nella scelta degli utenti.</p>
+        <form method="POST" action="{{ url_for('rename_influencer') }}">
+          {% for slot, name in influencers.items()|sort %}
+          <div class="field">
+            <label>Influencer {{ slot }}</label>
+            <input type="text" name="name_{{ slot }}" value="{{ name }}" />
+          </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary">💾 Salva nomi</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Abbonamenti attivi e provenienza</h2></div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Utente</th><th>Piano</th><th>Prezzo</th><th>Pagato</th><th>Arriva da</th><th>Data</th></tr></thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>{{ r.email }}</td>
+              <td>{{ r.plan }}</td>
+              <td>{{ r.price }}€</td>
+              <td>{% if r.paid %}<span class="tag tag-executed">sì</span>{% else %}<span class="tag tag-closed">demo</span>{% endif %}</td>
+              <td>{{ r.influencer }}</td>
+              <td class="hint">{{ r.date }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="empty">Ancora nessun abbonato</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const infData = {{ per_influencer|tojson }};
+  new Chart(document.getElementById("infChart").getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(infData),
+      datasets: [{ label: "Utenti", data: Object.values(infData), backgroundColor: "#4f8cff", borderRadius: 6 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: "#8a97b1" }, grid: { display: false } },
+        y: { ticks: { color: "#8a97b1", precision: 0 }, grid: { color: "rgba(37,48,73,.5)" }, beginAtZero: true },
+      },
+    },
+  });
+</script>
+{% endblock %}

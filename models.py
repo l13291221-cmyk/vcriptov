@@ -18,6 +18,8 @@ class License(db.Model):
     key = db.Column(db.String(64), nullable=False, unique=True, index=True)
     active = db.Column(db.Boolean, default=True, nullable=False)
     activated = db.Column(db.Boolean, default=False, nullable=False)
+    paid = db.Column(db.Boolean, default=False)          # True se pagato con Stripe (non demo)
+    influencer_slot = db.Column(db.Integer, nullable=True)  # 1..5, da quale influencer arriva
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     activated_at = db.Column(db.DateTime, nullable=True)
 
@@ -117,6 +119,16 @@ class EquityPoint(db.Model):
     license_id = db.Column(db.Integer, db.ForeignKey("licenses.id"), nullable=False, index=True)
     ts = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     equity = db.Column(db.Float, nullable=False)
+
+
+class Influencer(db.Model):
+    """I 5 influencer che pubblicizzano il sito. Il nome è modificabile dal
+    creatore direttamente dalla tabella nel pannello Amministrazione."""
+
+    __tablename__ = "influencers"
+
+    slot = db.Column(db.Integer, primary_key=True)  # 1..5
+    name = db.Column(db.String(120), nullable=False)
 
 
 class Signal(db.Model):

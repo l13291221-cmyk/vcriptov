@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Area creatore — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="brand-row">
+    <div class="brand-logo">🔐</div>
+    <div class="brand-name">Area creatore</div>
+  </div>
+  <p class="lead">Accesso riservato. Inserisci la tua password.</p>
+
+  <form method="POST" action="{{ url_for('admin_login') }}">
+    <div class="field">
+      <label>Password</label>
+      <input type="password" name="password" autocomplete="off" required autofocus />
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Entra →</button>
+  </form>
+
+  <p class="hint" style="margin-top:18px;text-align:center;">
+    <a href="{{ url_for('index') }}">← Torna al sito</a>
+  </p>
+</div>
+{% endblock %}
