@@ -129,6 +129,7 @@ class Influencer(db.Model):
 
     slot = db.Column(db.Integer, primary_key=True)  # 1..5
     name = db.Column(db.String(120), nullable=False)
+    password_enc = db.Column(db.Text, nullable=True)  # password d'accesso, cifrata
 
 
 class Signal(db.Model):

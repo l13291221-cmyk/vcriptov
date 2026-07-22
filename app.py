@@ -81,6 +81,9 @@ def ensure_schema():
             for col, ddl in license_cols.items():
                 if col not in existing_l:
                     conn.execute(text(f"ALTER TABLE licenses ADD COLUMN {col} {ddl}"))
+            existing_i = {row[1] for row in conn.execute(text("PRAGMA table_info(influencers)"))}
+            if "password_enc" not in existing_i:
+                conn.execute(text("ALTER TABLE influencers ADD COLUMN password_enc TEXT"))
     except Exception:
         # Se qualcosa va storto (es. DB nuovo), create_all ha già fatto il lavoro.
         pass
@@ -157,6 +160,24 @@ def ensure_admin_license():
         db.session.add(lic)
         db.session.flush()
         db.session.add(Setting(license_id=lic.id, contact_email=ADMIN_EMAIL))
+        db.session.commit()
+    return lic
+
+
+def ensure_influencer_license(slot: int):
+    """Licenza di ANTEPRIMA per un influencer: accesso completo (Lifetime, demo)
+    per registrare i video. Non conta come abbonato e non vede l'area creatore."""
+    email = f"influencer{slot}@vcriptov.local"
+    lic = License.query.filter_by(email=email).first()
+    if not lic:
+        lic = License(
+            email=email, plan="lifetime", key=generate_key(email, "lifetime"),
+            active=True, activated=True, activated_at=datetime.utcnow(),
+            paid=False, influencer_slot=0,
+        )
+        db.session.add(lic)
+        db.session.flush()
+        db.session.add(Setting(license_id=lic.id, contact_email=email))
         db.session.commit()
     return lic
 
@@ -369,19 +390,49 @@ def register_routes(app: Flask):
             return redirect(url_for("admin_login"))
         return render_template("admin_login.html")
 
+    @app.route("/influencer/login", methods=["GET", "POST"])
+    def influencer_login():
+        if request.method == "POST":
+            name = (request.form.get("name") or "").strip()
+            pw = (request.form.get("password") or "").strip()
+            match = None
+            for inf in Influencer.query.all():
+                if inf.name.strip().lower() == name.lower() and inf.password_enc:
+                    if decrypt(inf.password_enc) == pw and pw:
+                        match = inf
+                        break
+            if match:
+                lic = ensure_influencer_license(match.slot)
+                session.clear()
+                session["license_id"] = lic.id
+                session["is_influencer"] = True
+                flash(f"Benvenuto/a {match.name}! Accesso anteprima attivo.", "success")
+                return redirect(url_for("dashboard"))
+            flash("Nome o password non validi.", "error")
+            return redirect(url_for("influencer_login"))
+        return render_template("influencer_login.html")
+
     @app.route("/admin")
     @admin_required
     def admin():
-        influencers = {i.slot: i.name for i in Influencer.query.all()}
+        inf_objs = Influencer.query.order_by(Influencer.slot).all()
+        influencers = {i.slot: i.name for i in inf_objs}
+        # Nome + password (decifrata) per la tabella accessi influencer.
+        inf_access = [
+            {"slot": i.slot, "name": i.name, "password": decrypt(i.password_enc)}
+            for i in inf_objs
+        ]
+        # Escludo gli account di servizio (creatore + anteprime influencer).
         subs = (
-            License.query.filter(License.email != ADMIN_EMAIL, License.activated == True)  # noqa: E712
+            License.query.filter(
+                ~License.email.like("%@vcriptov.local"), License.activated == True  # noqa: E712
+            )
             .order_by(License.created_at.desc())
             .all()
         )
         active = [s for s in subs if s.active]
         revenue = sum(get_plan(s.plan)["price_eur"] for s in active if s.paid)
 
-        # Conteggi per piano e per influencer.
         per_plan = {}
         per_influencer = {slot: 0 for slot in range(1, 6)}
         for s in active:
@@ -403,22 +454,27 @@ def register_routes(app: Flask):
             revenue=revenue,
             active_count=len(active),
             per_plan={get_plan(p)["name"]: n for p, n in per_plan.items()},
-            influencers=influencers,
+            inf_access=inf_access,
             per_influencer={influencers[k]: v for k, v in per_influencer.items()},
             rows=rows,
         )
 
-    @app.route("/admin/rename-influencer", methods=["POST"])
+    @app.route("/admin/save-influencers", methods=["POST"])
     @admin_required
-    def rename_influencer():
+    def save_influencers():
         for slot in range(1, 6):
+            inf = db.session.get(Influencer, slot)
+            if not inf:
+                continue
             name = (request.form.get(f"name_{slot}") or "").strip()
             if name:
-                inf = db.session.get(Influencer, slot)
-                if inf:
-                    inf.name = name[:120]
+                inf.name = name[:120]
+            # La password si aggiorna solo se il campo è stato compilato.
+            pw = (request.form.get(f"password_{slot}") or "").strip()
+            if pw:
+                inf.password_enc = encrypt(pw)
         db.session.commit()
-        flash("Nomi influencer aggiornati.", "success")
+        flash("Influencer aggiornati (nomi e password).", "success")
         return redirect(url_for("admin"))
 
     # ---------- Dashboard ----------

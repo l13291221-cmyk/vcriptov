@@ -39,16 +39,26 @@
       </div>
 
       <div class="panel">
-        <div class="panel-head"><h2>Nomi degli influencer</h2></div>
-        <p class="hint">Cambia i nomi qui: verranno usati ovunque e nella scelta degli utenti.</p>
-        <form method="POST" action="{{ url_for('rename_influencer') }}">
-          {% for slot, name in influencers.items()|sort %}
-          <div class="field">
-            <label>Influencer {{ slot }}</label>
-            <input type="text" name="name_{{ slot }}" value="{{ name }}" />
+        <div class="panel-head"><h2>Accessi influencer</h2></div>
+        <p class="hint">Dai a ogni influencer il suo <b>nome</b> e la sua <b>password</b>.
+        Lui entra da “📣 Influencer” con questi dati per registrare i video.
+        Per togliergli l'accesso, cambia la password.</p>
+        <form method="POST" action="{{ url_for('save_influencers') }}">
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>#</th><th>Nome influencer</th><th>Password</th></tr></thead>
+              <tbody>
+                {% for i in inf_access %}
+                <tr>
+                  <td>{{ i.slot }}</td>
+                  <td><input type="text" name="name_{{ i.slot }}" value="{{ i.name }}" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);" /></td>
+                  <td><input type="text" name="password_{{ i.slot }}" value="{{ i.password }}" placeholder="(nessuna: accesso bloccato)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);" /></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-          {% endfor %}
-          <button type="submit" class="btn btn-primary">💾 Salva nomi</button>
+          <button type="submit" class="btn btn-primary" style="margin-top:12px;">💾 Salva influencer</button>
         </form>
       </div>
     </div>

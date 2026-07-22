@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Accesso Influencer — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="brand-row">
+    <div class="brand-logo">📣</div>
+    <div class="brand-name">Accesso Influencer</div>
+  </div>
+  <p class="lead">Area riservata agli influencer per provare e registrare il
+  sito. Inserisci il tuo nome e la password che ti è stata fornita.</p>
+
+  <form method="POST" action="{{ url_for('influencer_login') }}">
+    <div class="field">
+      <label>Il tuo nome</label>
+      <input type="text" name="name" placeholder="es. il nome del tuo account" autocomplete="off" required autofocus />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" name="password" autocomplete="off" required />
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Entra →</button>
+  </form>
+
+  <p class="hint" style="margin-top:18px;text-align:center;">
+    <a href="{{ url_for('index') }}">← Torna al sito</a>
+  </p>
+</div>
+{% endblock %}
