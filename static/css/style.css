@@ -223,3 +223,7 @@ canvas { max-width: 100%; }
 .tag-executed { background: rgba(34,201,138,.15); color: var(--green); }
 .tag-pending { background: rgba(255,207,92,.15); color: var(--yellow); }
 .tag-declined, .tag-failed { background: rgba(138,151,177,.15); color: var(--muted); }
+.risk-banner {
+  background: rgba(255,207,92,.08); border: 1px solid rgba(255,207,92,.3);
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #e6d6a8;
+}

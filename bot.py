@@ -171,7 +171,10 @@ class TradingEngine:
             f"Prezzo attuale: <b>{price:,.4f}</b>\n"
             f"🛑 Stop loss: <b>{sl:.1f}%</b>   🎯 Take profit: <b>{tp:.1f}%</b>\n"
             f"Importo: fino a <b>{cap:.0f}€</b>\n\n"
-            f"Vuoi investire? Tocca un bottone qui sotto."
+            f"Vuoi investire? Tocca un bottone qui sotto.\n\n"
+            f"⚠️ <i>Analisi automatica, non accurata al 100%. Non è consulenza "
+            f"finanziaria: verifica sempre di persona prima di investire e non "
+            f"affidarti ciecamente al bot. Rischi il tuo capitale.</i>"
         )
         token = decrypt(settings.telegram_token_enc)
         msg_id = send_signal_message(token, settings.telegram_chat_id, text, sig.id)
@@ -343,7 +346,9 @@ class TradingEngine:
                         f"✅ <b>Ordine eseguito</b> su {sig.symbol}\n"
                         f"Quantità: {result.get('amount')}\n"
                         f"Ingresso ~{result.get('entry_price')}\n"
-                        f"🛑 SL {result.get('stop_loss')}  🎯 TP {result.get('take_profit')}",
+                        f"🛑 SL {result.get('stop_loss')}  🎯 TP {result.get('take_profit')}\n\n"
+                        f"⚠️ <i>Ricorda: nessun bot è accurato al 100%. Controlla "
+                        f"tu la posizione sul tuo exchange.</i>",
                     )
             else:
                 sig.status = "failed"
