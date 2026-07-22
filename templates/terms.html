@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Termini, Rischi e Cookie — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card" style="max-width:640px;">
+  <div class="brand-row">
+    <div class="brand-logo">⚠️</div>
+    <div class="brand-name">Prima di continuare — leggi e accetta</div>
+  </div>
+
+  <div class="terms-box">
+    <p><b>1. Nessuna garanzia sui risultati.</b> VCriptoV è uno strumento di
+    analisi automatica. I segnali e le analisi <b>non sono accurati al 100%</b> e
+    <b>non garantiscono alcun profitto</b>. Le performance passate non sono
+    indicative di risultati futuri.</p>
+
+    <p><b>2. Non è consulenza finanziaria.</b> Nulla di ciò che trovi qui
+    costituisce consulenza finanziaria, di investimento, fiscale o legale.
+    Le decisioni di investimento sono esclusivamente tue.</p>
+
+    <p><b>3. Rischio elevato.</b> Il trading di criptovalute è altamente rischioso
+    e volatile: <b>puoi perdere tutto il capitale investito</b>. Investi solo
+    denaro che puoi permetterti di perdere.</p>
+
+    <p><b>4. Nessuna responsabilità per le perdite.</b> Usando il servizio
+    accetti che <b>VCriptoV e il suo titolare NON sono responsabili</b> di
+    eventuali perdite, danni o mancati guadagni derivanti dall'uso del bot, dei
+    segnali o dell'esecuzione automatica degli ordini sul tuo exchange. Sei tu
+    l'unico responsabile delle tue operazioni e del tuo conto.</p>
+
+    <p><b>5. Verifica sempre.</b> Controlla personalmente ogni operazione prima
+    di confermarla e non affidarti ciecamente al bot.</p>
+
+    <p><b>6. Requisiti.</b> Dichiari di essere maggiorenne e di poter operare
+    legalmente con le criptovalute nel tuo Paese.</p>
+
+    <p><b>7. Chiavi e dati.</b> Le chiavi API dell'exchange e i dati che inserisci
+    restano sotto la tua responsabilità; vengono conservati in forma cifrata per
+    il funzionamento del servizio.</p>
+
+    <p><b>8. Cookie.</b> Questo sito usa <b>cookie tecnici</b> necessari
+    all'accesso e al mantenimento della sessione. Continuando, ne accetti l'uso.</p>
+
+    <p style="color:var(--muted);">Premendo “Accetto” dichiari di aver letto,
+    compreso e accettato integralmente quanto sopra.</p>
+  </div>
+
+  <form method="POST" action="{{ url_for('terms') }}">
+    <button type="submit" class="btn btn-primary btn-block">✅ Accetto e continuo</button>
+  </form>
+</div>
+{% endblock %}

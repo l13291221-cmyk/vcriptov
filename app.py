@@ -70,6 +70,7 @@ def ensure_schema():
     license_cols = {
         "paid": "BOOLEAN DEFAULT 0",
         "influencer_slot": "INTEGER",
+        "terms_accepted": "BOOLEAN DEFAULT 0",
     }
     try:
         with db.engine.begin() as conn:
@@ -132,6 +133,12 @@ def login_required(view):
         if not lic or not lic.active or not lic.activated:
             session.clear()
             return redirect(url_for("activate"))
+        ep = request.endpoint
+        # Prima chiedi da quale influencer arriva, poi l'accettazione dei termini.
+        if lic.influencer_slot is None and ep not in ("choose_influencer", "logout"):
+            return redirect(url_for("choose_influencer"))
+        if not lic.terms_accepted and ep not in ("terms", "choose_influencer", "logout"):
+            return redirect(url_for("terms"))
         return view(*args, **kwargs)
 
     return wrapper
@@ -155,7 +162,7 @@ def ensure_admin_license():
             email=ADMIN_EMAIL, plan="lifetime",
             key=generate_key(ADMIN_EMAIL, "lifetime"),
             active=True, activated=True, activated_at=datetime.utcnow(),
-            paid=False, influencer_slot=0,
+            paid=False, influencer_slot=0, terms_accepted=True,
         )
         db.session.add(lic)
         db.session.flush()
@@ -173,7 +180,7 @@ def ensure_influencer_license(slot: int):
         lic = License(
             email=email, plan="lifetime", key=generate_key(email, "lifetime"),
             active=True, activated=True, activated_at=datetime.utcnow(),
-            paid=False, influencer_slot=0,
+            paid=False, influencer_slot=0, terms_accepted=True,
         )
         db.session.add(lic)
         db.session.flush()
@@ -370,6 +377,18 @@ def register_routes(app: Flask):
                 return redirect(url_for("dashboard"))
             flash("Scegli da dove arrivi.", "error")
         return render_template("choose_influencer.html", influencers=influencers)
+
+    @app.route("/terms", methods=["GET", "POST"])
+    @login_required
+    def terms():
+        lic = current_license()
+        if lic.terms_accepted:
+            return redirect(url_for("dashboard"))
+        if request.method == "POST":
+            lic.terms_accepted = True
+            db.session.commit()
+            return redirect(url_for("dashboard"))
+        return render_template("terms.html")
 
     @app.route("/logout")
     def logout():
