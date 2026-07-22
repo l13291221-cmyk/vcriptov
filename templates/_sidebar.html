@@ -1,0 +1,18 @@
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="brand-logo" style="width:36px;height:36px;font-size:18px;">📈</div>
+      <div class="brand-name" style="font-size:18px;">VCriptoV</div>
+    </div>
+    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+      📊 Dashboard
+    </a>
+    <a href="{{ url_for('settings_view') }}" class="nav-link {% if request.endpoint == 'settings_view' %}active{% endif %}">
+      ⚙️ Impostazioni
+    </a>
+    <a href="{{ url_for('logout') }}" class="nav-link">🚪 Esci</a>
+    <div class="side-foot">
+      <span class="plan-pill">{{ plan.name }}</span>
+      <div>{{ license.email }}</div>
+      <div style="margin-top:6px;opacity:.7;">© VCriptoV · demo</div>
+    </div>
+  </aside>

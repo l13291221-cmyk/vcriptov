@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Attiva la licenza — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="brand-row">
+    <div class="brand-logo">🔑</div>
+    <div class="brand-name">Sblocca la dashboard</div>
+  </div>
+  <p class="lead">Inserisci il codice di attivazione ricevuto dopo l'acquisto.</p>
+
+  <form method="POST" action="{{ url_for('activate') }}">
+    <div class="field">
+      <label>Codice di attivazione</label>
+      <input type="text" name="license_key" placeholder="VIP-XXXX-XXXX-XXXX-XXXX"
+             autocomplete="off" required style="text-transform:uppercase;letter-spacing:1px;" />
+      <div class="hint">Formato: PREFISSO-XXXX-XXXX-XXXX-XXXX</div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Sblocca →</button>
+  </form>
+
+  <p class="hint" style="margin-top:18px;text-align:center;">
+    Non hai un codice? <a href="{{ url_for('index') }}">Scegli un piano →</a>
+  </p>
+</div>
+{% endblock %}

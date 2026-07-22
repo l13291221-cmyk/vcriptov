@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Impostazioni — VCriptoV{% endblock %}
+{% block body_class %}app-body{% endblock %}
+
+{% block content %}
+<div class="app">
+  {% include "_sidebar.html" %}
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1>Impostazioni</h1>
+        <div class="hint">Configura account, exchange, notifiche e strategia — tutto da qui, nessun file da modificare.</div>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('settings_view') }}">
+      <div class="panel">
+        <h2>Account</h2>
+        <div class="settings-grid">
+          <div class="field">
+            <label>Email</label>
+            <input type="email" name="contact_email" value="{{ s.contact_email or '' }}" />
+          </div>
+          <div class="field">
+            <label>Piano attivo</label>
+            <input type="text" value="{{ plan.name }}" disabled />
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Exchange (collega il tuo conto)</h2>
+        <p class="hint">Le chiavi vengono cifrate (AES) prima di essere salvate nel database. Non vengono mai mostrate in chiaro.</p>
+        <div class="settings-grid">
+          <div class="field">
+            <label>Exchange</label>
+            <select name="exchange">
+              {% for ex in ['kraken', 'binance', 'coinbase', 'bybit', 'kucoin'] %}
+                <option value="{{ ex }}" {% if s.exchange == ex %}selected{% endif %}>{{ ex|capitalize }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div></div>
+          <div class="field">
+            <label>API Key</label>
+            <input type="text" name="api_key" placeholder="{{ masked_api_key or 'Inserisci la tua API Key' }}" autocomplete="off" />
+            <div class="hint">{% if masked_api_key %}Attuale: {{ masked_api_key }} — lascia vuoto per non modificare.{% endif %}</div>
+          </div>
+          <div class="field">
+            <label>API Secret</label>
+            <input type="password" name="api_secret" placeholder="{{ masked_api_secret or 'Inserisci il tuo Secret' }}" autocomplete="off" />
+            <div class="hint">{% if masked_api_secret %}Salvato ✓ — lascia vuoto per non modificare.{% endif %}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel {% if not plan.telegram %}locked{% endif %}">
+        <h2>Notifiche Telegram {% if not plan.telegram %}🔒{% endif %}</h2>
+        {% if plan.telegram %}
+          <div class="settings-grid">
+            <div class="field">
+              <label>Token bot Telegram</label>
+              <input type="password" name="telegram_token" placeholder="{{ masked_telegram or '123456:ABC-DEF...' }}" autocomplete="off" />
+              <div class="hint">{% if masked_telegram %}Salvato ✓ — lascia vuoto per non modificare.{% endif %}</div>
+            </div>
+            <div class="field">
+              <label>Chat ID</label>
+              <input type="text" name="telegram_chat_id" value="{{ s.telegram_chat_id or '' }}" placeholder="es. 123456789" />
+              <div class="hint">Il tuo chat_id personale a cui inviare le notifiche.</div>
+            </div>
+          </div>
+        {% else %}
+          <p class="lock-note">Disponibile nei piani Pro, VIP e Lifetime. Aggiorna il piano per abilitare le notifiche.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel {% if not plan.custom_strategy %}locked{% endif %}">
+        <h2>Strategia &amp; Rischio {% if not plan.custom_strategy %}🔒{% endif %}</h2>
+        {% if plan.custom_strategy %}
+          <p class="hint">Personalizza i parametri del motore a incrocio di medie mobili.</p>
+          <div class="settings-grid">
+            <div class="field">
+              <label>Rischio per operazione (%)</label>
+              <input type="number" name="risk_per_trade" step="0.1" min="0.1" max="20" value="{{ s.risk_per_trade }}" />
+            </div>
+            <div></div>
+            <div class="field">
+              <label>Media mobile veloce (periodi)</label>
+              <input type="number" name="fast_ma" min="2" max="50" value="{{ s.fast_ma }}" />
+            </div>
+            <div class="field">
+              <label>Media mobile lenta (periodi)</label>
+              <input type="number" name="slow_ma" min="3" max="200" value="{{ s.slow_ma }}" />
+            </div>
+          </div>
+        {% else %}
+          <p class="lock-note">Parametri personalizzabili disponibili solo nei piani VIP e Lifetime.</p>
+          <input type="hidden" name="risk_per_trade" value="{{ s.risk_per_trade }}" />
+          <input type="hidden" name="fast_ma" value="{{ s.fast_ma }}" />
+          <input type="hidden" name="slow_ma" value="{{ s.slow_ma }}" />
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <div class="toggle-row">
+          <input type="checkbox" name="trading_enabled" id="te" {% if s.trading_enabled %}checked{% endif %} />
+          <label for="te" style="margin:0;">Motore di trading attivo</label>
+        </div>
+        <p class="hint">Se disattivato, il bot smette di aprire nuove posizioni per il tuo account.</p>
+      </div>
+
+      <button type="submit" class="btn btn-primary">💾 Salva impostazioni</button>
+    </form>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Codice generato — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="brand-row">
+    <div class="brand-logo">✅</div>
+    <div class="brand-name">Pagamento confermato</div>
+  </div>
+  <p class="lead">Piano <strong>{{ plan.name }}</strong> attivato per
+  <strong>{{ email }}</strong>. Ecco il tuo codice di attivazione (lo abbiamo
+  anche "inviato" alla tua email):</p>
+
+  <div class="license-box" id="key">{{ license_key }}</div>
+
+  <button class="btn btn-ghost btn-block" onclick="copyKey()" type="button">📋 Copia codice</button>
+
+  <a href="{{ url_for('activate') }}" class="btn btn-primary btn-block" style="margin-top:12px;">
+    Inserisci il codice e accedi →
+  </a>
+
+  <div class="disclaimer">
+    Conserva questo codice: è legato al tuo piano <strong>{{ plan.name }}</strong>
+    e alla tua email. Serve per sbloccare la dashboard.
+  </div>
+</div>
+
+<script>
+  function copyKey() {
+    const t = document.getElementById('key').textContent.trim();
+    navigator.clipboard.writeText(t).then(() => {
+      event.target.textContent = '✓ Copiato!';
+      setTimeout(() => event.target.textContent = '📋 Copia codice', 1800);
+    });
+  }
+</script>
+{% endblock %}

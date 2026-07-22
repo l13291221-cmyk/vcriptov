@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — VCriptoV{% endblock %}
+{% block body_class %}app-body{% endblock %}
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="app">
+  {% include "_sidebar.html" %}
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1>Dashboard di trading</h1>
+        <div class="hint">Piano {{ plan.name }} · {{ symbols|length }} crypto monitorate</div>
+      </div>
+      <div class="bot-status">
+        <span class="dot"></span> Bot attivo · aggiornamento ogni 30s
+        {% if plan.sentiment %}· <span style="color:var(--yellow)">Filtro sentiment ON</span>{% endif %}
+      </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="label">Equity totale</div>
+        <div class="value" id="kpi-equity">—</div>
+        <div class="sub" id="kpi-equity-sub">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">P&L totale</div>
+        <div class="value" id="kpi-pnl">—</div>
+        <div class="sub" id="kpi-pnl-pct">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Liquidità</div>
+        <div class="value" id="kpi-cash">—</div>
+        <div class="sub">Investito: <span id="kpi-invested">—</span></div>
+      </div>
+      <div class="kpi">
+        <div class="label">Posizioni aperte</div>
+        <div class="value" id="kpi-open">—</div>
+        <div class="sub">Win rate: <span id="kpi-winrate">—</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h2>Curva di equity</h2><span class="hint" id="equity-live">live</span></div>
+        <canvas id="equityChart" height="120"></canvas>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Prezzi di mercato</h2></div>
+        <div class="price-list" id="priceList"><div class="empty">Caricamento…</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Posizioni aperte</h2></div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Crypto</th><th>Lato</th><th>Quantità</th><th>Prezzo entrata</th><th>Prezzo attuale</th><th>P&L</th></tr></thead>
+          <tbody id="positionsBody"><tr><td colspan="6" class="empty">Nessuna posizione aperta</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Storico operazioni</h2></div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Crypto</th><th>Lato</th><th>Quantità</th><th>Entrata</th><th>Uscita</th><th>P&L</th><th>Chiusa</th></tr></thead>
+          <tbody id="tradesBody"><tr><td colspan="7" class="empty">Nessuna operazione chiusa</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
