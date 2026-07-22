@@ -15,9 +15,26 @@ ALL_SYMBOLS = [
     "MATIC/USDT",
     "LINK/USDT",
     "DOT/USDT",
+    "AVAX/USDT",
+    "TRX/USDT",
+    "LTC/USDT",
+    "BCH/USDT",
+    "ATOM/USDT",
+    "UNI/USDT",
+    "XLM/USDT",
+    "ETC/USDT",
+    "FIL/USDT",
+    "NEAR/USDT",
+    "APT/USDT",
+    "ARB/USDT",
+    "OP/USDT",
+    "INJ/USDT",
+    "TON/USDT",
+    "SUI/USDT",
 ]
 
-# Prezzi iniziali indicativi per la simulazione (paper trading).
+# Prezzi iniziali indicativi, usati solo come valore di partenza prima che
+# arrivino i prezzi reali dall'exchange (o in modalità offline).
 SEED_PRICES = {
     "BTC/USDT": 68000.0,
     "ETH/USDT": 3500.0,
@@ -29,6 +46,22 @@ SEED_PRICES = {
     "MATIC/USDT": 0.72,
     "LINK/USDT": 14.5,
     "DOT/USDT": 6.8,
+    "AVAX/USDT": 35.0,
+    "TRX/USDT": 0.13,
+    "LTC/USDT": 85.0,
+    "BCH/USDT": 480.0,
+    "ATOM/USDT": 8.0,
+    "UNI/USDT": 11.0,
+    "XLM/USDT": 0.11,
+    "ETC/USDT": 26.0,
+    "FIL/USDT": 5.5,
+    "NEAR/USDT": 6.0,
+    "APT/USDT": 9.0,
+    "ARB/USDT": 0.9,
+    "OP/USDT": 2.2,
+    "INJ/USDT": 25.0,
+    "TON/USDT": 6.5,
+    "SUI/USDT": 1.4,
 }
 
 PLANS = {

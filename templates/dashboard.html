@@ -29,6 +29,13 @@
       rischi il tuo capitale.
     </div>
 
+    <div class="connect-hint" id="connectHint" style="display:none;">
+      🔗 <b>Collega il tuo Kraken</b> nelle
+      <a href="{{ url_for('settings_view') }}">Impostazioni</a> per vedere qui i tuoi
+      dati reali: saldo, operazioni e profitti. Finché non è collegato, non mostriamo
+      numeri inventati.
+    </div>
+
     <!-- KPI -->
     <div class="kpi-grid">
       <div class="kpi">
@@ -55,8 +62,9 @@
 
     <div class="grid-2">
       <div class="panel">
-        <div class="panel-head"><h2>Curva di equity</h2><span class="hint" id="equity-live">live</span></div>
-        <canvas id="equityChart" height="120"></canvas>
+        <div class="panel-head"><h2>Andamento del conto</h2><span class="hint" id="equity-live"></span></div>
+        <div class="chart-box"><canvas id="equityChart"></canvas></div>
+        <div class="chart-placeholder" id="equityPlaceholder">Collega il tuo Kraken per vedere l'andamento reale del conto.</div>
       </div>
       <div class="panel">
         <div class="panel-head"><h2>Prezzi di mercato</h2></div>
