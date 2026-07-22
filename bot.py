@@ -75,60 +75,18 @@ class TradingEngine:
         self.tick_count += 1
 
     def _process_license(self, lic: License, prices: dict[str, float]):
+        """Nessun paper trading: il bot NON genera più numeri/operazioni finti.
+        Se il TRADING REALE è acceso, manda i segnali interattivi su Telegram;
+        altrimenti non fa nulla (la dashboard mostra i dati reali di Kraken)."""
         settings = lic.settings
-        portfolio = lic.portfolio
-        if portfolio is None:
-            portfolio = Portfolio(
-                license_id=lic.id,
-                cash=Config.STARTING_EQUITY,
-                starting_equity=Config.STARTING_EQUITY,
-            )
-            db.session.add(portfolio)
-            db.session.flush()
-
-        fast = settings.fast_ma if settings else 5
-        slow = settings.slow_ma if settings else 20
-        risk = settings.risk_per_trade if settings else 2.0
-
-        # --- MODALITÀ TRADING REALE: manda segnali a bottoni su Telegram ---
-        # (soldi veri: l'ordine parte solo quando il cliente tocca "Investi")
-        if settings and settings.live_trading and self._telegram_ready(lic, settings):
-            for symbol in plan_symbols(lic.plan):
-                if prices.get(symbol):
-                    self._maybe_send_signal(lic, settings, symbol, prices[symbol], fast, slow)
-            self._record_equity(lic, portfolio, prices)
+        if not (settings and settings.live_trading and self._telegram_ready(lic, settings)):
             return
 
-        # --- MODALITÀ DEMO (paper trading, track record) ---
-        if settings and not settings.trading_enabled:
-            self._record_equity(lic, portfolio, prices)
-            return
-
-        symbols = plan_symbols(lic.plan)
-        open_trades = {
-            t.symbol: t
-            for t in Trade.query.filter_by(license_id=lic.id, status="open").all()
-        }
-
-        for symbol in symbols:
-            price = prices.get(symbol)
-            if not price:
-                continue
-            sma_fast = market.sma(symbol, fast)
-            sma_slow = market.sma(symbol, slow)
-            if sma_fast is None or sma_slow is None:
-                continue
-
-            has_position = symbol in open_trades
-
-            # Segnale long: media veloce sopra la lenta (momentum rialzista).
-            if sma_fast > sma_slow and not has_position:
-                self._open_trade(lic, portfolio, settings, symbol, price, risk)
-            # Uscita: media veloce scende sotto la lenta.
-            elif sma_fast < sma_slow and has_position:
-                self._close_trade(lic, portfolio, settings, open_trades[symbol], price)
-
-        self._record_equity(lic, portfolio, prices)
+        fast = settings.fast_ma or 5
+        slow = settings.slow_ma or 20
+        for symbol in plan_symbols(lic.plan):
+            if prices.get(symbol):
+                self._maybe_send_signal(lic, settings, symbol, prices[symbol], fast, slow)
 
     # ---- modalità reale: generazione segnali interattivi ---------------
     def _telegram_ready(self, lic, settings) -> bool:

@@ -8,6 +8,7 @@ Avvio rapido:
 Poi apri http://127.0.0.1:5000
 """
 
+import time
 from datetime import datetime
 from functools import wraps
 
@@ -48,6 +49,10 @@ from security import decrypt, encrypt, mask
 # è versionato e finirebbe su git/GitHub. Vedi config.load_stripe_key().
 stripe.api_key = load_stripe_key()
 
+# Versione degli asset (CSS/JS): cambia ad ogni avvio, così il browser è
+# costretto a scaricare i file aggiornati e non mostra più la versione vecchia.
+ASSET_VERSION = str(int(time.time()))
+
 
 def ensure_schema():
     """Migrazione leggera: aggiunge al DB esistente le colonne nuove del
@@ -74,6 +79,7 @@ def ensure_schema():
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # non far cachare i file statici
     db.init_app(app)
 
     with app.app_context():
@@ -114,7 +120,7 @@ def register_routes(app: Flask):
 
     @app.context_processor
     def inject_globals():
-        return {"now": datetime.utcnow(), "plans": PLANS}
+        return {"now": datetime.utcnow(), "plans": PLANS, "asset_v": ASSET_VERSION}
 
     # ---------- Paywall / scelta piano ----------
     @app.route("/")
