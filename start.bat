@@ -1,27 +1,37 @@
 @echo off
 setlocal
 cd /d "%~dp0"
+set "LOG=%~dp0avvio_log.txt"
+echo VCriptoV - log di avvio > "%LOG%"
 
 echo ==============================================
 echo    VCriptoV - avvio del sito
 echo ==============================================
 echo.
 
-REM --- 1. Controllo che Python sia installato ---
-where python >nul 2>nul
-if errorlevel 1 goto no_python
+REM --- 1. Trova Python: prima "py" (piu' affidabile su Windows), poi "python" ---
+set "PYCMD="
+where py >nul 2>nul && set "PYCMD=py"
+if defined PYCMD goto have_python
+where python >nul 2>nul && set "PYCMD=python"
+if defined PYCMD goto have_python
+goto no_python
+
+:have_python
+echo Uso Python: %PYCMD% >> "%LOG%"
+%PYCMD% --version >> "%LOG%" 2>&1
 
 REM --- 2. Ambiente virtuale ---
 if exist ".venv\Scripts\python.exe" goto have_venv
 echo Preparo l'ambiente la prima volta, attendi un minuto...
-python -m venv .venv
+%PYCMD% -m venv .venv >> "%LOG%" 2>&1
 if errorlevel 1 goto venv_error
 
 :have_venv
-call ".venv\Scripts\activate.bat"
-echo Installo o aggiorno le dipendenze, attendi...
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+set "VENV_PY=.venv\Scripts\python.exe"
+echo Installo o aggiorno le dipendenze. Puo' metterci 1-2 minuti, attendi...
+"%VENV_PY%" -m pip install --upgrade pip >> "%LOG%" 2>&1
+"%VENV_PY%" -m pip install -r requirements.txt >> "%LOG%" 2>&1
 if errorlevel 1 goto pip_error
 
 REM --- 3. Chiave Stripe, chiesta una sola volta ---
@@ -45,19 +55,22 @@ echo      localhost:5001
 echo   Per fermarlo: chiudi questa finestra.
 echo ==============================================
 echo.
-python app.py
+"%VENV_PY%" app.py >> "%LOG%" 2>&1
 echo.
-echo Il sito si e' fermato.
+echo Il sito si e' fermato. Se non si e' aperto, guarda il file avvio_log.txt.
 pause
 goto end
 
 :no_python
 echo.
-echo ERRORE: Python non e' installato sul computer.
+echo ERRORE: Python non e' stato trovato sul computer.
 echo 1. Vai su https://www.python.org/downloads/
 echo 2. Scarica e installa Python.
-echo 3. IMPORTANTE: nella prima schermata metti la spunta su "Add Python to PATH".
-echo 4. Poi riprova a fare doppio click su questo file.
+echo 3. IMPORTANTISSIMO: nella PRIMA schermata metti la spunta su
+echo    "Add Python to PATH", poi premi "Install Now".
+echo 4. Riavvia il computer e riprova questo file.
+echo.
+echo Dettagli salvati nel file avvio_log.txt
 echo.
 pause
 goto end
@@ -65,13 +78,28 @@ goto end
 :venv_error
 echo.
 echo ERRORE nella preparazione dell'ambiente Python.
+echo Ecco cosa e' successo:
+echo ----------------------------------------------
+type "%LOG%"
+echo ----------------------------------------------
+echo Spesso si risolve reinstallando Python da python.org
+echo con la spunta "Add Python to PATH".
+echo Se non capisci l'errore, mandami il file avvio_log.txt
+echo che si trova nella stessa cartella di questo programma.
 echo.
 pause
 goto end
 
 :pip_error
 echo.
-echo ERRORE nell'installazione. Controlla di essere connesso a internet e riprova.
+echo ERRORE nell'installazione delle dipendenze.
+echo Ecco cosa e' successo:
+echo ----------------------------------------------
+type "%LOG%"
+echo ----------------------------------------------
+echo Controlla di essere connesso a internet e riprova.
+echo Se non capisci l'errore, mandami il file avvio_log.txt
+echo che si trova nella stessa cartella di questo programma.
 echo.
 pause
 goto end
