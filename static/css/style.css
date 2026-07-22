@@ -208,3 +208,13 @@ tr:last-child td { border-bottom: none; }
 .locked { opacity: .55; }
 .lock-note { font-size: 12px; color: var(--yellow); margin-top: 4px; }
 canvas { max-width: 100%; }
+
+/* ---------- Guida Telegram ---------- */
+.tg-guide { margin: 4px 0 16px; background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 4px 14px; }
+.tg-guide summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: var(--brand); }
+.tg-steps { margin: 8px 0 14px; padding-left: 22px; }
+.tg-steps li { padding: 5px 0; font-size: 14px; color: #cdd6ea; }
+.tg-steps code { background: var(--bg-soft); padding: 1px 6px; border-radius: 6px; font-size: 13px; color: var(--yellow); }
+.data-badge { padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.data-live { background: rgba(34,201,138,.15); color: var(--green); }
+.data-offline { background: rgba(255,93,108,.15); color: var(--red); }

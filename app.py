@@ -27,7 +27,8 @@ from flask import (
 from bot import init_engine
 from config import Config
 from licensing import generate_key, normalize, verify_checksum
-from market import market
+from market import MARKET_EXCHANGE, market
+from notify import send_telegram
 from models import (
     EquityPoint,
     License,
@@ -346,6 +347,8 @@ def register_routes(app: Flask):
                 "open_positions": len(open_trades),
                 "closed_trades": len(closed),
                 "win_rate": round(win_rate, 1),
+                "data_source": market.source,
+                "market_exchange": MARKET_EXCHANGE,
             }
         )
 
@@ -411,6 +414,35 @@ def register_routes(app: Flask):
                 }
             )
         return jsonify(out)
+
+    @app.route("/api/telegram/test", methods=["POST"])
+    @login_required
+    def api_telegram_test():
+        """Invia un messaggio di prova su Telegram con le impostazioni salvate,
+        così il cliente verifica subito di aver collegato tutto correttamente."""
+        lic = current_license()
+        plan = get_plan(lic.plan)
+        if not plan.get("telegram"):
+            return jsonify({"ok": False, "error": "Telegram non incluso nel tuo piano."}), 403
+
+        s = lic.settings
+        token = decrypt(s.telegram_token_enc) if s else ""
+        chat_id = s.telegram_chat_id if s else ""
+        if not token or not chat_id:
+            return jsonify(
+                {"ok": False, "error": "Inserisci prima Token e Chat ID, poi salva."}
+            ), 400
+
+        ok = send_telegram(
+            token,
+            chat_id,
+            "✅ <b>VCriptoV</b>\nCollegamento riuscito! Da ora riceverai qui i segnali del bot.",
+        )
+        if ok:
+            return jsonify({"ok": True})
+        return jsonify(
+            {"ok": False, "error": "Invio fallito: controlla Token e Chat ID."}
+        ), 400
 
     @app.errorhandler(404)
     def not_found(e):

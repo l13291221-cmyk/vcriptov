@@ -58,18 +58,35 @@
       <div class="panel {% if not plan.telegram %}locked{% endif %}">
         <h2>Notifiche Telegram {% if not plan.telegram %}🔒{% endif %}</h2>
         {% if plan.telegram %}
+          <details class="tg-guide">
+            <summary>❓ Non sai come si fa? Apri la guida passo-passo</summary>
+            <ol class="tg-steps">
+              <li>Apri Telegram e nella barra di ricerca in alto scrivi <b>@BotFather</b>. Apri quello con la spunta blu.</li>
+              <li>Premi <b>Avvia</b> (o scrivi <code>/start</code>), poi scrivi <code>/newbot</code> e premi invio.</li>
+              <li>BotFather ti chiede un <b>nome</b> (quello che vuoi) e poi uno <b>username</b> che deve finire con <code>bot</code> (es. <code>miosegnali_bot</code>).</li>
+              <li>BotFather ti risponde con un <b>Token</b>, una riga tipo <code>123456789:AAE...xYz</code>. <b>Copialo e incollalo</b> nel campo “Token bot Telegram” qui sotto.</li>
+              <li>Ora serve il tuo <b>Chat ID</b>. Cerca <b>@userinfobot</b> su Telegram, aprilo e premi <b>Avvia</b>: ti risponde con un numero (“Id: 123456789”). <b>Copia quel numero</b> nel campo “Chat ID”.</li>
+              <li>Cerca il <b>tuo</b> bot (l'username che hai scelto al punto 3) e premi <b>Avvia</b> almeno una volta, altrimenti non può scriverti.</li>
+              <li>Premi <b>💾 Salva impostazioni</b> in fondo, poi torna qui e premi <b>“Invia messaggio di prova”</b>. Se ti arriva il messaggio, è tutto collegato! 🎉</li>
+            </ol>
+          </details>
           <div class="settings-grid">
             <div class="field">
               <label>Token bot Telegram</label>
-              <input type="password" name="telegram_token" placeholder="{{ masked_telegram or '123456:ABC-DEF...' }}" autocomplete="off" />
-              <div class="hint">{% if masked_telegram %}Salvato ✓ — lascia vuoto per non modificare.{% endif %}</div>
+              <input type="password" name="telegram_token" placeholder="{{ masked_telegram or '123456789:AAE...xYz' }}" autocomplete="off" />
+              <div class="hint">{% if masked_telegram %}Salvato ✓ — lascia vuoto per non modificare.{% else %}Il codice che ti dà @BotFather (punto 4).{% endif %}</div>
             </div>
             <div class="field">
               <label>Chat ID</label>
               <input type="text" name="telegram_chat_id" value="{{ s.telegram_chat_id or '' }}" placeholder="es. 123456789" />
-              <div class="hint">Il tuo chat_id personale a cui inviare le notifiche.</div>
+              <div class="hint">Il numero che ti dà @userinfobot (punto 5).</div>
             </div>
           </div>
+          <div class="toggle-row" style="margin-top:6px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="tgTestBtn">📨 Invia messaggio di prova</button>
+            <span id="tgTestResult" class="hint"></span>
+          </div>
+          <p class="hint">Salva prima le impostazioni, poi prova. Il messaggio di prova usa Token e Chat ID già salvati.</p>
         {% else %}
           <p class="lock-note">Disponibile nei piani Pro, VIP e Lifetime. Aggiorna il piano per abilitare le notifiche.</p>
         {% endif %}
@@ -114,4 +131,34 @@
     </form>
   </main>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const btn = document.getElementById('tgTestBtn');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      const out = document.getElementById('tgTestResult');
+      btn.disabled = true;
+      out.textContent = 'Invio in corso…';
+      out.className = 'hint';
+      try {
+        const r = await fetch('{{ url_for("api_telegram_test") }}', { method: 'POST' });
+        const d = await r.json();
+        if (d.ok) {
+          out.textContent = '✅ Inviato! Controlla Telegram.';
+          out.style.color = 'var(--green)';
+        } else {
+          out.textContent = '❌ ' + (d.error || 'Errore');
+          out.style.color = 'var(--red)';
+        }
+      } catch (e) {
+        out.textContent = '❌ Errore di rete';
+        out.style.color = 'var(--red)';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+</script>
 {% endblock %}

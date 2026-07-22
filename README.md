@@ -6,13 +6,21 @@ del codice di attivazione (license key)**, **pagina Impostazioni grafica** e
 **dashboard di trading con grafici** (Chart.js). Il motore di trading gira in
 **background** e si aggiorna ogni 30 secondi.
 
-> ⚠️ **Avviso importante.** Questo è un software **dimostrativo/didattico**.
-> Il motore esegue **trading simulato (paper trading)** su prezzi generati
-> internamente: **non invia ordini reali** ad alcun exchange e **non
-> costituisce consulenza finanziaria**. I pagamenti sono invece **reali**,
-> gestiti tramite **Stripe** (vedi configurazione sotto). Prima di un uso
-> commerciale collega le API reali dell'exchange e verifica i requisiti
-> legali/regolamentari per la vendita di software finanziario nel tuo paese.
+> ⚠️ **Cosa è reale e cosa no (leggi bene).**
+> - **Dati di mercato: REALI.** Il bot legge i prezzi veri da **Kraken** (via
+>   `ccxt`) e calcola i segnali su dati reali. Nella dashboard un badge indica
+>   se i dati sono `LIVE` o `offline`.
+> - **Segnali su Telegram: REALI.** Ogni cliente collega il *proprio* bot
+>   Telegram e riceve i segnali (apertura/chiusura) sul proprio account.
+> - **Pagamenti: REALI**, tramite **Stripe** (vedi configurazione sotto).
+> - **Esecuzione ordini con denaro vero: NON attiva.** Le operazioni mostrate
+>   nella dashboard sono **simulate (paper trading) su prezzi reali**, a scopo di
+>   track record: il bot **non compra/vende automaticamente** con i soldi del
+>   cliente. È una scelta di sicurezza (un bug o una strategia errata
+>   perderebbe denaro reale). Abilitare l'esecuzione reale è un passo separato e
+>   va fatto con estrema cautela.
+> - Nulla di questo **costituisce consulenza finanziaria**. Prima di vendere al
+>   pubblico, verifica i requisiti legali/regolamentari del tuo paese.
 
 > 🔑 **La chiave segreta Stripe NON è nel codice.** Incollala nel file locale
 > `instance/stripe.key` (ignorato da git) — oppure usa la variabile d'ambiente
@@ -49,7 +57,7 @@ vcriptov/
 ├── licensing.py        # Generazione/validazione codici di attivazione (HMAC)
 ├── security.py         # Cifratura Fernet delle credenziali utente
 ├── models.py           # Modelli DB (SQLAlchemy): License, Setting, Portfolio, Trade, EquityPoint
-├── market.py           # Feed prezzi simulato (random walk) — punto di aggancio feed reale
+├── market.py           # Feed prezzi REALI da Kraken (ccxt), con fallback offline sicuro
 ├── bot.py              # Motore di trading in background (thread, tick ogni 30s)
 ├── notify.py           # Notifiche Telegram (best-effort)
 ├── requirements.txt

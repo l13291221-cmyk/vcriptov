@@ -58,6 +58,18 @@
     document.getElementById("kpi-invested").textContent = eur(d.positions_value);
     document.getElementById("kpi-open").textContent = d.open_positions;
     document.getElementById("kpi-winrate").textContent = d.win_rate + "% (" + d.closed_trades + " chiuse)";
+
+    const badge = document.getElementById("dataBadge");
+    if (badge) {
+      const ex = (d.market_exchange || "exchange").toUpperCase();
+      if (d.data_source === "live") {
+        badge.textContent = "● DATI LIVE " + ex;
+        badge.className = "data-badge data-live";
+      } else {
+        badge.textContent = "○ dati offline (nessuna connessione a " + ex + ")";
+        badge.className = "data-badge data-offline";
+      }
+    }
   }
 
   async function refreshEquity() {
