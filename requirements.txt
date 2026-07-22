@@ -1,7 +1,11 @@
 Flask==3.0.3
 Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.36
-cryptography==43.0.3
-requests==2.32.3
 stripe==11.1.0
 ccxt==4.5.67
+# cryptography e requests sono richiesti anche da ccxt, che pretende versioni
+# precise. NON li blocchiamo a una versione fissa, altrimenti vanno in conflitto
+# con ccxt: lasciamo che pip scelga quella compatibile per tutti.
+cryptography>=43
+requests>=2.32
+
