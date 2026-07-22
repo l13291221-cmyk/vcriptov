@@ -17,10 +17,11 @@ import threading
 import time
 from datetime import datetime, timedelta
 
+from analysis import answer_question
 from config import Config
 from exchange_account import place_signal_order
 from market import market
-from models import EquityPoint, License, Portfolio, Setting, Signal, Trade, db
+from models import License, Setting, Signal, db
 from notify import answer_callback, edit_message, get_updates, send_signal_message, send_telegram
 from plans import get_plan, plan_symbols
 from security import decrypt
@@ -142,66 +143,6 @@ class TradingEngine:
             sig.status = "failed"
             sig.result = "Invio del messaggio Telegram non riuscito."
 
-    def _open_trade(self, lic, portfolio, settings, symbol, price, risk_pct):
-        equity = self._equity_value(portfolio)
-        alloc = equity * (max(0.1, min(risk_pct, 20)) / 100.0) * 5  # posizione ~5x il rischio
-        alloc = min(alloc, portfolio.cash)
-        if alloc < 10:  # non aprire posizioni microscopiche
-            return
-        qty = alloc / price
-        portfolio.cash -= alloc
-        trade = Trade(
-            license_id=lic.id,
-            symbol=symbol,
-            side="long",
-            qty=qty,
-            entry_price=price,
-            status="open",
-            opened_at=datetime.utcnow(),
-        )
-        db.session.add(trade)
-        self._notify(settings, f"🟢 APERTURA {symbol} @ {price:,.4f} (qty {qty:.4f})")
-
-    def _close_trade(self, lic, portfolio, settings, trade, price):
-        proceeds = trade.qty * price
-        trade.exit_price = price
-        trade.pnl = (price - trade.entry_price) * trade.qty
-        trade.status = "closed"
-        trade.closed_at = datetime.utcnow()
-        portfolio.cash += proceeds
-        emoji = "✅" if trade.pnl >= 0 else "🔻"
-        self._notify(
-            settings,
-            f"{emoji} CHIUSURA {trade.symbol} @ {price:,.4f} | P&L {trade.pnl:+,.2f} USDT",
-        )
-
-    def _equity_value(self, portfolio) -> float:
-        """Equity = cash + valore di mercato delle posizioni aperte."""
-        prices = market.all_prices()
-        open_trades = Trade.query.filter_by(
-            license_id=portfolio.license_id, status="open"
-        ).all()
-        positions_value = sum(t.qty * prices.get(t.symbol, t.entry_price) for t in open_trades)
-        return portfolio.cash + positions_value
-
-    def _record_equity(self, lic, portfolio, prices):
-        open_trades = Trade.query.filter_by(license_id=lic.id, status="open").all()
-        positions_value = sum(t.qty * prices.get(t.symbol, t.entry_price) for t in open_trades)
-        equity = portfolio.cash + positions_value
-        db.session.add(EquityPoint(license_id=lic.id, equity=equity, ts=datetime.utcnow()))
-
-        # Mantieni la curva a max ~500 punti per licenza.
-        count = EquityPoint.query.filter_by(license_id=lic.id).count()
-        if count > 500:
-            oldest = (
-                EquityPoint.query.filter_by(license_id=lic.id)
-                .order_by(EquityPoint.ts.asc())
-                .limit(count - 500)
-                .all()
-            )
-            for p in oldest:
-                db.session.delete(p)
-
     def _notify(self, settings, text):
         if not settings:
             return
@@ -218,7 +159,7 @@ class TradingEngine:
 
     # ---- ascolto tap dei bottoni Telegram ed esecuzione ordini ---------
     def _telegram_loop(self):
-        """Thread separato: raccoglie i tap 'Investi/Non investire' ed esegue."""
+        """Thread separato: risponde ai messaggi e ai tap 'Investi/Non investire'."""
         while not self._stop.is_set():
             try:
                 with self.app.app_context():
@@ -228,12 +169,8 @@ class TradingEngine:
             self._stop.wait(3)
 
     def _poll_telegram(self):
-        # Un bot Telegram per cliente: interrogo il getUpdates di ogni token attivo.
-        settings_list = (
-            Setting.query.filter_by(live_trading=True)
-            .filter(Setting.telegram_token_enc.isnot(None))
-            .all()
-        )
+        # Un bot Telegram per cliente: interrogo ogni token configurato.
+        settings_list = Setting.query.filter(Setting.telegram_token_enc.isnot(None)).all()
         seen_tokens = set()
         for s in settings_list:
             token = decrypt(s.telegram_token_enc)
@@ -246,6 +183,19 @@ class TradingEngine:
                 cq = update.get("callback_query")
                 if cq:
                     self._handle_callback(token, cq)
+                    continue
+                msg = update.get("message")
+                if msg and msg.get("text"):
+                    self._handle_message(token, s, msg)
+
+    def _handle_message(self, token, settings, msg):
+        """Risponde a una domanda scritta su Telegram (es. 'analizza il mercato')."""
+        chat_id = str((msg.get("chat") or {}).get("id", ""))
+        # Rispondo solo al proprietario configurato (il suo chat_id).
+        if settings.telegram_chat_id and chat_id and chat_id != str(settings.telegram_chat_id):
+            return
+        reply = answer_question(msg.get("text", ""))
+        send_telegram(token, chat_id or settings.telegram_chat_id, reply)
 
     def _handle_callback(self, token, cq):
         data = cq.get("data", "")

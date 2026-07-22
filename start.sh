@@ -34,19 +34,34 @@ python -m pip install --quiet -r requirements.txt
 
 # --- 2. Stripe Secret Key (chiesta una sola volta) ---------------------
 mkdir -p instance
-if [ ! -s instance/stripe.key ]; then
-  echo ""
-  echo "----------------------------------------------"
-  echo "Incolla la tua STRIPE SECRET KEY e premi Invio."
-  echo "(inizia con sk_live_...  per soldi veri, oppure sk_test_...  per le prove)"
-  echo "----------------------------------------------"
-  read -r STRIPE_KEY
-  if [ -z "$STRIPE_KEY" ]; then
-    echo "Nessuna chiave inserita. Riesegui il file quando ce l'hai."
-    exit 1
+# Scelta modalità: demo o reale (solo se non già configurata)
+need_setup=1
+if [ -s instance/stripe.key ]; then
+  if grep -qi '^sk_' instance/stripe.key || grep -qi '^demo' instance/stripe.key; then
+    need_setup=0
   fi
-  printf '%s' "$STRIPE_KEY" > instance/stripe.key
-  echo "-> Chiave salvata. Non te la chiederò più."
+fi
+if [ "$need_setup" = "1" ]; then
+  echo ""
+  echo "=============================================="
+  echo "  Come vuoi avviare il sito?"
+  echo "    demo   = per provarlo tu, senza pagamenti"
+  echo "    reale  = i clienti pagano davvero (serve la chiave Stripe)"
+  echo "=============================================="
+  read -r MODE
+  case "$(echo "$MODE" | tr '[:upper:]' '[:lower:]')" in
+    demo)
+      printf 'demo' > instance/stripe.key
+      echo "-> Modalità DEMO attivata." ;;
+    reale|real)
+      echo "Incolla la tua STRIPE SECRET KEY (sk_live_... o sk_test_...) e premi Invio:"
+      read -r STRIPE_KEY
+      if [ -z "$STRIPE_KEY" ]; then echo "Nessuna chiave inserita."; exit 1; fi
+      printf '%s' "$STRIPE_KEY" > instance/stripe.key
+      echo "-> Modalità REALE attivata." ;;
+    *)
+      echo "Scrivi demo oppure reale. Riesegui il file."; exit 1 ;;
+  esac
 fi
 
 # --- 3. Avvio ----------------------------------------------------------

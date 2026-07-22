@@ -54,10 +54,10 @@ def send_signal_message(token: str, chat_id: str, text: str, signal_id: int):
 
 
 def get_updates(token: str, offset: int | None = None, timeout: int = 0):
-    """Ritorna la lista di update (inclusi i tap dei bottoni)."""
+    """Ritorna la lista di update: tap dei bottoni E messaggi di testo."""
     if not token:
         return []
-    payload = {"timeout": timeout, "allowed_updates": ["callback_query"]}
+    payload = {"timeout": timeout, "allowed_updates": ["callback_query", "message"]}
     if offset is not None:
         payload["offset"] = offset
     data = _call(token, "getUpdates", payload, timeout=timeout + 10)

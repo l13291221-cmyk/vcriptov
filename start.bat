@@ -34,26 +34,51 @@ echo Installo o aggiorno le dipendenze. Puo' metterci 1-2 minuti, attendi...
 "%VENV_PY%" -m pip install -r requirements.txt >> "%LOG%" 2>&1
 if errorlevel 1 goto pip_error
 
-REM --- 3. Chiave Stripe, chiesta una sola volta (e ricontrollata) ---
+REM --- 3. Scelta modalita': DEMO o REALE ---
 if not exist "instance" mkdir instance
-if not exist "instance\stripe.key" goto askkey
-REM Va bene una vera chiave "sk_" oppure la parola "demo". Altrimenti richiedo.
-findstr /b "sk_" "instance\stripe.key" >nul 2>nul && goto run
-findstr /i /b "demo" "instance\stripe.key" >nul 2>nul && goto run
-goto askkey
+set "CURR="
+if not exist "instance\stripe.key" goto askmode
+findstr /b "sk_" "instance\stripe.key" >nul 2>nul && set "CURR=REALE"
+findstr /i /b "demo" "instance\stripe.key" >nul 2>nul && set "CURR=DEMO"
+if not defined CURR goto askmode
+echo.
+echo Modalita' attuale: %CURR%
+set /p CH="Premi INVIO per continuare cosi', oppure scrivi  cambia  per cambiare: "
+if /i "%CH%"=="cambia" goto askmode
+goto run
 
-:askkey
+:askmode
+echo.
+echo ==============================================
+echo   Come vuoi avviare il sito?
+echo.
+echo     demo    = per PROVARLO tu, senza pagamenti. Per testare o aggiornare.
+echo     reale   = i clienti PAGANO davvero. Serve la tua chiave Stripe.
+echo ==============================================
+set /p MODE="Scrivi demo oppure reale: "
+if /i "%MODE%"=="demo" goto savedemo
+if /i "%MODE%"=="reale" goto askrealkey
+if /i "%MODE%"=="real" goto askrealkey
+echo.
+echo Non ho capito. Scrivi la parola  demo  oppure la parola  reale.
+goto askmode
+
+:savedemo
+>"instance\stripe.key" echo demo
+echo Modalita' DEMO attivata: nessun pagamento, per le tue prove.
+goto run
+
+:askrealkey
 echo.
 echo ----------------------------------------------
-echo Per PROVARE il sito senza pagamenti, scrivi:   demo
-echo Oppure incolla la tua STRIPE SECRET KEY vera.
-echo La chiave vera inizia con sk_test_ per le prove o sk_live_ per soldi veri.
+echo Modalita' REALE: incolla la tua STRIPE SECRET KEY e premi Invio.
+echo Inizia con sk_live_ per incassare soldi veri, o sk_test_ per prove con carte finte.
 echo NON quella che inizia con pk_ : quella e' sbagliata.
 echo ----------------------------------------------
-set /p STRIPE_KEY="Scrivi demo oppure incolla la chiave: "
-if "%STRIPE_KEY%"=="" goto no_key
+set /p STRIPE_KEY="Incolla la chiave: "
+if "%STRIPE_KEY%"=="" goto askmode
 >"instance\stripe.key" echo %STRIPE_KEY%
-echo Salvato. Non te lo chiedero' piu'.
+echo Chiave salvata. Modalita' REALE attivata.
 
 :run
 echo.
