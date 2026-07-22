@@ -22,9 +22,28 @@
 
   {% block content %}{% endblock %}
 
+  <!-- Popup Assistenza (condiviso in tutte le pagine) -->
+  <div id="supportPopup" class="support-popup" onclick="if(event.target===this)toggleSupport()">
+    <div class="support-card">
+      <button class="support-close" onclick="toggleSupport()" aria-label="Chiudi">✕</button>
+      <h3 style="margin-bottom:4px;">🎧 Assistenza</h3>
+      <p class="hint" style="margin-top:0;">Hai bisogno di aiuto? Contattaci.</p>
+      <a href="mailto:assistenza.vcriptov@gmail.com" class="support-row">
+        <span>📧</span><span>assistenza.vcriptov@gmail.com</span>
+      </a>
+      <a href="https://wa.me/447529666119" target="_blank" rel="noopener" class="support-row">
+        <span>💬</span><span>WhatsApp: +44 7529 666119</span>
+      </a>
+    </div>
+  </div>
+
   <script>
     // Auto-dismiss dei messaggi flash.
     setTimeout(() => document.querySelectorAll('.flash').forEach(f => f.remove()), 5000);
+    function toggleSupport() {
+      const p = document.getElementById('supportPopup');
+      p.style.display = (p.style.display === 'flex') ? 'none' : 'flex';
+    }
   </script>
   {% block scripts %}{% endblock %}
 </body>
