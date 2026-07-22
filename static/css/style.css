@@ -218,3 +218,8 @@ canvas { max-width: 100%; }
 .data-badge { padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
 .data-live { background: rgba(34,201,138,.15); color: var(--green); }
 .data-offline { background: rgba(255,93,108,.15); color: var(--red); }
+.danger-panel { border-color: rgba(255,93,108,.5); background: rgba(255,93,108,.05); }
+.danger-toggle { padding: 10px 12px; border: 1px solid rgba(255,93,108,.4); border-radius: 10px; background: rgba(255,93,108,.08); }
+.tag-executed { background: rgba(34,201,138,.15); color: var(--green); }
+.tag-pending { background: rgba(255,207,92,.15); color: var(--yellow); }
+.tag-declined, .tag-failed { background: rgba(138,151,177,.15); color: var(--muted); }

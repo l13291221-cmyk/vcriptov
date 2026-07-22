@@ -26,6 +26,7 @@ from flask import (
 
 from bot import init_engine
 from config import Config
+from exchange_account import account_snapshot
 from licensing import generate_key, normalize, verify_checksum
 from market import MARKET_EXCHANGE, market
 from notify import send_telegram
@@ -34,6 +35,7 @@ from models import (
     License,
     Portfolio,
     Setting,
+    Signal,
     Trade,
     db,
 )
@@ -47,6 +49,28 @@ from security import decrypt, encrypt, mask
 stripe.api_key = load_stripe_key()
 
 
+def ensure_schema():
+    """Migrazione leggera: aggiunge al DB esistente le colonne nuove del
+    trading reale (SQLite non le crea da solo su una tabella già esistente)."""
+    from sqlalchemy import text
+
+    new_cols = {
+        "live_trading": "BOOLEAN DEFAULT 0",
+        "max_order_eur": "FLOAT DEFAULT 20.0",
+        "stop_loss_pct": "FLOAT DEFAULT 8.0",
+        "take_profit_pct": "FLOAT DEFAULT 15.0",
+    }
+    try:
+        with db.engine.begin() as conn:
+            existing = {row[1] for row in conn.execute(text("PRAGMA table_info(settings)"))}
+            for col, ddl in new_cols.items():
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE settings ADD COLUMN {col} {ddl}"))
+    except Exception:
+        # Se qualcosa va storto (es. DB nuovo), create_all ha già fatto il lavoro.
+        pass
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -54,6 +78,7 @@ def create_app() -> Flask:
 
     with app.app_context():
         db.create_all()
+        ensure_schema()
 
     register_routes(app)
 
@@ -291,6 +316,16 @@ def register_routes(app: Flask):
             s.telegram_chat_id = (request.form.get("telegram_chat_id") or "").strip() or None
             s.trading_enabled = request.form.get("trading_enabled") == "on"
 
+            # --- Trading reale (richiede Telegram): interruttore + protezioni ---
+            if plan.get("telegram"):
+                s.live_trading = request.form.get("live_trading") == "on"
+                try:
+                    s.max_order_eur = max(1.0, min(float(request.form.get("max_order_eur", 20.0)), 100000.0))
+                    s.stop_loss_pct = max(0.5, min(float(request.form.get("stop_loss_pct", 8.0)), 90.0))
+                    s.take_profit_pct = max(0.5, min(float(request.form.get("take_profit_pct", 15.0)), 500.0))
+                except (ValueError, TypeError):
+                    flash("Parametri di rischio non validi, ignorati.", "error")
+
             # Parametri strategia: modificabili solo dai piani VIP/Lifetime.
             if plan.get("custom_strategy"):
                 try:
@@ -443,6 +478,41 @@ def register_routes(app: Flask):
         return jsonify(
             {"ok": False, "error": "Invio fallito: controlla Token e Chat ID."}
         ), 400
+
+    @app.route("/api/account")
+    @login_required
+    def api_account():
+        """Saldo e operazioni REALI dal conto Kraken del cliente (sola lettura)."""
+        lic = current_license()
+        s = lic.settings
+        snap = account_snapshot(s)
+        snap["live_trading"] = bool(s and s.live_trading)
+        return jsonify(snap)
+
+    @app.route("/api/signals")
+    @login_required
+    def api_signals():
+        """Storico dei segnali inviati e del loro esito."""
+        lic = current_license()
+        sigs = (
+            Signal.query.filter_by(license_id=lic.id)
+            .order_by(Signal.created_at.desc())
+            .limit(30)
+            .all()
+        )
+        return jsonify([
+            {
+                "symbol": x.symbol,
+                "side": x.side,
+                "ref_price": round(x.ref_price, 6),
+                "sl": x.stop_loss_pct,
+                "tp": x.take_profit_pct,
+                "status": x.status,
+                "result": x.result,
+                "created_at": x.created_at.isoformat() if x.created_at else None,
+            }
+            for x in sigs
+        ])
 
     @app.errorhandler(404)
     def not_found(e):

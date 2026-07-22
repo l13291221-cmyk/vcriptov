@@ -13,14 +13,21 @@ del codice di attivazione (license key)**, **pagina Impostazioni grafica** e
 > - **Segnali su Telegram: REALI.** Ogni cliente collega il *proprio* bot
 >   Telegram e riceve i segnali (apertura/chiusura) sul proprio account.
 > - **Pagamenti: REALI**, tramite **Stripe** (vedi configurazione sotto).
-> - **Esecuzione ordini con denaro vero: NON attiva.** Le operazioni mostrate
->   nella dashboard sono **simulate (paper trading) su prezzi reali**, a scopo di
->   track record: il bot **non compra/vende automaticamente** con i soldi del
->   cliente. È una scelta di sicurezza (un bug o una strategia errata
->   perderebbe denaro reale). Abilitare l'esecuzione reale è un passo separato e
->   va fatto con estrema cautela.
-> - Nulla di questo **costituisce consulenza finanziaria**. Prima di vendere al
->   pubblico, verifica i requisiti legali/regolamentari del tuo paese.
+> - **Esecuzione ordini con denaro vero: DISPONIBILE ma SPENTA di default.**
+>   Con l'interruttore "Trading reale" acceso (Impostazioni), quando il cliente
+>   tocca **✅ Investi** sul messaggio Telegram il bot piazza un ordine **vero**
+>   sul suo Kraken, con stop loss e take profit e un **tetto massimo per ordine**.
+>   ⚠️ **Questo codice muove soldi veri e NON è testato contro l'API reale**
+>   (l'ambiente di sviluppo non ha rete verso l'exchange): **testalo tu con
+>   importi minimi** prima di usarlo con i clienti. Dettagli di stop-loss/
+>   take-profit e nomi dei simboli possono richiedere aggiustamenti per Kraken.
+> - Se il "Trading reale" è spento, la dashboard mostra un **track record
+>   simulato** (paper trading su prezzi reali) e nessun ordine viene inviato.
+> - Nulla di questo **costituisce consulenza finanziaria**. Dare indicazioni di
+>   investimento e operare sul conto altrui è **spesso un'attività regolamentata**:
+>   verifica con un avvocato/commercialista i requisiti (licenze) prima di
+>   vendere al pubblico. Custodire le chiavi di trading dei clienti è una
+>   responsabilità di sicurezza importante.
 
 > 🔑 **La chiave segreta Stripe NON è nel codice.** Incollala nel file locale
 > `instance/stripe.key` (ignorato da git) — oppure usa la variabile d'ambiente
@@ -58,8 +65,9 @@ vcriptov/
 ├── security.py         # Cifratura Fernet delle credenziali utente
 ├── models.py           # Modelli DB (SQLAlchemy): License, Setting, Portfolio, Trade, EquityPoint
 ├── market.py           # Feed prezzi REALI da Kraken (ccxt), con fallback offline sicuro
-├── bot.py              # Motore di trading in background (thread, tick ogni 30s)
-├── notify.py           # Notifiche Telegram (best-effort)
+├── exchange_account.py # Collegamento al Kraken del cliente: saldo, operazioni, ordini reali
+├── notify.py           # Telegram: notifiche + messaggi con bottoni Investi/Non investire
+├── bot.py              # Motore in background: paper trading + segnali reali a bottoni
 ├── requirements.txt
 ├── templates/
 │   ├── base.html

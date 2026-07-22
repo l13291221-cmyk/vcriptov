@@ -92,6 +92,38 @@
         {% endif %}
       </div>
 
+      {% if plan.telegram %}
+      <div class="panel danger-panel">
+        <h2>⚠️ Trading REALE su Kraken (soldi veri)</h2>
+        <p class="hint">
+          Se acceso, quando tocchi <b>✅ Investi</b> sul messaggio Telegram il bot
+          piazza un ordine <b>vero</b> sul tuo conto Kraken (con stop loss e take
+          profit). Servono API Key/Secret Kraken <b>con permesso di trading</b>.
+          <b>Si rischiano soldi veri.</b> Inizia con importi piccolissimi.
+        </p>
+        <div class="toggle-row danger-toggle">
+          <input type="checkbox" name="live_trading" id="lt" {% if s.live_trading %}checked{% endif %} />
+          <label for="lt" style="margin:0;font-weight:700;">Attiva il trading reale (parte SPENTO)</label>
+        </div>
+        <div class="settings-grid" style="margin-top:12px;">
+          <div class="field">
+            <label>Importo massimo per ordine (€)</label>
+            <input type="number" name="max_order_eur" step="1" min="1" value="{{ s.max_order_eur or 20 }}" />
+            <div class="hint">Tetto di spesa per ogni singolo investimento.</div>
+          </div>
+          <div></div>
+          <div class="field">
+            <label>Stop loss (%)</label>
+            <input type="number" name="stop_loss_pct" step="0.5" min="0.5" value="{{ s.stop_loss_pct or 8 }}" />
+          </div>
+          <div class="field">
+            <label>Take profit (%)</label>
+            <input type="number" name="take_profit_pct" step="0.5" min="0.5" value="{{ s.take_profit_pct or 15 }}" />
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="panel {% if not plan.custom_strategy %}locked{% endif %}">
         <h2>Strategia &amp; Rischio {% if not plan.custom_strategy %}🔒{% endif %}</h2>
         {% if plan.custom_strategy %}

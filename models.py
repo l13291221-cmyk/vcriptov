@@ -54,7 +54,14 @@ class Setting(db.Model):
     risk_per_trade = db.Column(db.Float, default=2.0)      # % del capitale per trade
     fast_ma = db.Column(db.Integer, default=5)             # media mobile veloce
     slow_ma = db.Column(db.Integer, default=20)            # media mobile lenta
-    trading_enabled = db.Column(db.Boolean, default=True)
+    trading_enabled = db.Column(db.Boolean, default=True)  # motore demo (paper) attivo
+
+    # --- TRADING REALE con soldi veri sul conto Kraken del cliente ---
+    # SPENTO per default: va acceso a mano e con piena consapevolezza.
+    live_trading = db.Column(db.Boolean, default=False)
+    max_order_eur = db.Column(db.Float, default=20.0)      # tetto massimo per singolo ordine
+    stop_loss_pct = db.Column(db.Float, default=8.0)       # % stop loss
+    take_profit_pct = db.Column(db.Float, default=15.0)    # % take profit
 
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -110,3 +117,28 @@ class EquityPoint(db.Model):
     license_id = db.Column(db.Integer, db.ForeignKey("licenses.id"), nullable=False, index=True)
     ts = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     equity = db.Column(db.Float, nullable=False)
+
+
+class Signal(db.Model):
+    """Un segnale inviato su Telegram con i tasti Investi / Non investire.
+
+    Quando il cliente tocca "Investi", il bot cerca qui il segnale (tramite il
+    callback_data del bottone) e piazza l'ordine reale sul suo Kraken.
+    """
+
+    __tablename__ = "signals"
+
+    id = db.Column(db.Integer, primary_key=True)
+    license_id = db.Column(db.Integer, db.ForeignKey("licenses.id"), nullable=False, index=True)
+    symbol = db.Column(db.String(32), nullable=False)
+    side = db.Column(db.String(8), default="buy")          # buy / sell
+    ref_price = db.Column(db.Float, nullable=False)         # prezzo al momento del segnale
+    stop_loss_pct = db.Column(db.Float, default=8.0)
+    take_profit_pct = db.Column(db.Float, default=15.0)
+    max_order_eur = db.Column(db.Float, default=20.0)
+
+    status = db.Column(db.String(16), default="pending")   # pending/executed/declined/failed/expired
+    result = db.Column(db.Text, nullable=True)             # esito ordine o messaggio d'errore
+    telegram_message_id = db.Column(db.String(32), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    resolved_at = db.Column(db.DateTime, nullable=True)

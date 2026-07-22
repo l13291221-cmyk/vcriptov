@@ -124,11 +124,64 @@
     </tr>`).join("");
   }
 
+  async function refreshAccount() {
+    const panel = document.getElementById("accountPanel");
+    if (!panel) return;
+    let d;
+    try { d = await getJSON("/api/account"); } catch (e) { return; }
+    const badge = document.getElementById("accountBadge");
+    const body = document.getElementById("accountBody");
+    if (!d.connected) {
+      badge.textContent = "non collegato";
+      badge.className = "data-badge data-offline";
+      return;
+    }
+    badge.textContent = d.live_trading ? "● collegato · TRADING REALE ON" : "● collegato (sola lettura)";
+    badge.className = "data-badge data-live";
+    const bal = Object.entries(d.balances || {})
+      .map(([a, v]) => `<div class="price-row"><span class="price-sym">${a}</span><span class="price-val"><div class="p">${(+v).toLocaleString("it-IT", { maximumFractionDigits: 8 })}</div></span></div>`)
+      .join("") || '<div class="empty">Saldo vuoto</div>';
+    const tr = (d.trades || []).slice(0, 15).map((t) => `<tr>
+      <td>${(t.symbol || "").replace("/USDT", "")}</td>
+      <td><span class="tag ${t.side === 'buy' ? 'tag-long' : 'tag-closed'}">${(t.side || "").toUpperCase()}</span></td>
+      <td>${t.amount ?? "—"}</td>
+      <td>${t.price ?? "—"}</td>
+      <td>${t.cost ?? "—"}</td>
+      <td class="hint">${t.time ? new Date(t.time).toLocaleString("it-IT") : "—"}</td>
+    </tr>`).join("");
+    body.innerHTML = `
+      <div class="grid-2">
+        <div><h3 style="font-size:14px;color:var(--muted);">Saldo</h3><div class="price-list">${bal}</div></div>
+        <div><h3 style="font-size:14px;color:var(--muted);">Operazioni reali</h3>
+          <div style="overflow-x:auto;"><table>
+            <thead><tr><th>Crypto</th><th>Lato</th><th>Qtà</th><th>Prezzo</th><th>Costo</th><th>Quando</th></tr></thead>
+            <tbody>${tr || '<tr><td colspan="6" class="empty">Nessuna operazione</td></tr>'}</tbody>
+          </table></div>
+        </div>
+      </div>`;
+  }
+
+  async function refreshSignals() {
+    const body = document.getElementById("signalsBody");
+    if (!body) return;
+    let rows;
+    try { rows = await getJSON("/api/signals"); } catch (e) { return; }
+    if (!rows.length) { body.innerHTML = '<tr><td colspan="6" class="empty">Nessun segnale ancora</td></tr>'; return; }
+    body.innerHTML = rows.map((r) => `<tr>
+      <td><strong>${r.symbol.replace("/USDT", "")}</strong></td>
+      <td><span class="tag tag-long">${r.side.toUpperCase()}</span></td>
+      <td>$${(+r.ref_price).toLocaleString("it-IT", { maximumFractionDigits: 4 })}</td>
+      <td class="hint">${r.sl}% / ${r.tp}%</td>
+      <td><span class="tag tag-${r.status}">${r.status}</span>${r.result ? ' <span class="hint">' + r.result + '</span>' : ''}</td>
+      <td class="hint">${r.created_at ? new Date(r.created_at).toLocaleString("it-IT") : "—"}</td>
+    </tr>`).join("");
+  }
+
   async function refreshAll() {
     try {
       await Promise.all([
         refreshOverview(), refreshEquity(), refreshPrices(),
-        refreshPositions(), refreshTrades(),
+        refreshPositions(), refreshTrades(), refreshAccount(), refreshSignals(),
       ]);
     } catch (e) {
       console.warn("refresh error", e);

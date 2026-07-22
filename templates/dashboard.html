@@ -76,6 +76,26 @@
         </table>
       </div>
     </div>
+
+    {% if plan.telegram %}
+    <div class="panel" id="accountPanel">
+      <div class="panel-head">
+        <h2>💰 Conto Kraken reale</h2>
+        <span id="accountBadge" class="data-badge data-offline">non collegato</span>
+      </div>
+      <div id="accountBody"><div class="empty">Collega Kraken e attiva il trading reale nelle Impostazioni per vedere qui saldo e operazioni vere.</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>📨 Segnali inviati su Telegram</h2></div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Crypto</th><th>Azione</th><th>Prezzo</th><th>SL / TP</th><th>Esito</th><th>Quando</th></tr></thead>
+          <tbody id="signalsBody"><tr><td colspan="6" class="empty">Nessun segnale ancora</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
   </main>
 </div>
 {% endblock %}
