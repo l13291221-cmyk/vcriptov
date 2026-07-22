@@ -1,64 +1,87 @@
 @echo off
-REM ==========================================================
-REM  Avviatore "tutto-in-uno" di VCriptoV per Windows.
-REM  Fai doppio click su questo file. Fa tutto da solo:
-REM   1. prepara Python e installa le dipendenze;
-REM   2. la PRIMA volta ti chiede la Stripe Secret Key e la salva
-REM      in instance\stripe.key (file locale, mai caricato su GitHub);
-REM   3. avvia il sito su http://127.0.0.1:5000
-REM ==========================================================
+setlocal
 cd /d "%~dp0"
 
 echo ==============================================
 echo    VCriptoV - avvio del sito
 echo ==============================================
+echo.
 
-REM --- 1. Controllo Python ---------------------------------
+REM --- 1. Controllo che Python sia installato ---
 where python >nul 2>nul
-if errorlevel 1 (
-  echo ERRORE: Python non e' installato.
-  echo Scaricalo da https://www.python.org/downloads/
-  echo IMPORTANTE: durante l'installazione spunta "Add Python to PATH".
-  pause
-  exit /b 1
-)
+if errorlevel 1 goto no_python
 
-REM --- 2. Ambiente virtuale + dipendenze -------------------
-if not exist ".venv" (
-  echo -^> Preparo l'ambiente (solo la prima volta)...
-  python -m venv .venv
-)
-call .venv\Scripts\activate.bat
-echo -^> Installo/aggiorno le dipendenze...
-python -m pip install --quiet --upgrade pip
-python -m pip install --quiet -r requirements.txt
+REM --- 2. Ambiente virtuale ---
+if exist ".venv\Scripts\python.exe" goto have_venv
+echo Preparo l'ambiente la prima volta, attendi un minuto...
+python -m venv .venv
+if errorlevel 1 goto venv_error
 
-REM --- 3. Stripe Secret Key (chiesta una sola volta) -------
+:have_venv
+call ".venv\Scripts\activate.bat"
+echo Installo o aggiorno le dipendenze, attendi...
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+if errorlevel 1 goto pip_error
+
+REM --- 3. Chiave Stripe, chiesta una sola volta ---
 if not exist "instance" mkdir instance
-if not exist "instance\stripe.key" goto askkey
-goto run
-
-:askkey
+if exist "instance\stripe.key" goto run
 echo.
 echo ----------------------------------------------
 echo Incolla la tua STRIPE SECRET KEY e premi Invio.
-echo (sk_live_... per soldi veri, sk_test_... per le prove)
+echo sk_live per soldi veri, sk_test per le prove.
 echo ----------------------------------------------
 set /p STRIPE_KEY="Chiave: "
-if "%STRIPE_KEY%"=="" (
-  echo Nessuna chiave inserita. Riesegui il file quando ce l'hai.
-  pause
-  exit /b 1
-)
->instance\stripe.key echo|set /p="%STRIPE_KEY%"
-echo -^> Chiave salvata. Non te la chiedero' piu'.
+if "%STRIPE_KEY%"=="" goto no_key
+>"instance\stripe.key" echo|set /p="%STRIPE_KEY%"
+echo Chiave salvata. Non te la chiedero' piu'.
 
 :run
 echo.
 echo ==============================================
-echo   Sito avviato! Apri il browser su:
-echo      http://127.0.0.1:5000
-echo   (per fermarlo: chiudi questa finestra)
+echo   Sito avviato. Apri Chrome o Edge e scrivi:
+echo      localhost:5001
+echo   Per fermarlo: chiudi questa finestra.
 echo ==============================================
+echo.
 python app.py
+echo.
+echo Il sito si e' fermato.
 pause
+goto end
+
+:no_python
+echo.
+echo ERRORE: Python non e' installato sul computer.
+echo 1. Vai su https://www.python.org/downloads/
+echo 2. Scarica e installa Python.
+echo 3. IMPORTANTE: nella prima schermata metti la spunta su "Add Python to PATH".
+echo 4. Poi riprova a fare doppio click su questo file.
+echo.
+pause
+goto end
+
+:venv_error
+echo.
+echo ERRORE nella preparazione dell'ambiente Python.
+echo.
+pause
+goto end
+
+:pip_error
+echo.
+echo ERRORE nell'installazione. Controlla di essere connesso a internet e riprova.
+echo.
+pause
+goto end
+
+:no_key
+echo.
+echo Nessuna chiave inserita. Riesegui il file quando ce l'hai.
+echo.
+pause
+goto end
+
+:end
+endlocal

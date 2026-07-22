@@ -5,7 +5,7 @@
 #   1. prepara l'ambiente Python e installa le dipendenze;
 #   2. la PRIMA volta ti chiede la tua Stripe Secret Key e la salva
 #      in instance/stripe.key (file locale, mai caricato su GitHub);
-#   3. avvia il sito su http://127.0.0.1:5000
+#   3. avvia il sito su http://127.0.0.1:5001
 #
 set -e
 cd "$(dirname "$0")"
@@ -53,7 +53,7 @@ fi
 echo ""
 echo "=============================================="
 echo "  Sito avviato! Apri il browser su:"
-echo "     http://127.0.0.1:5000"
+echo "     http://127.0.0.1:5001"
 echo "  (per fermarlo: premi Ctrl+C in questa finestra)"
 echo "=============================================="
 python app.py

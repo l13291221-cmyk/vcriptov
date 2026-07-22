@@ -524,4 +524,4 @@ app = create_app()
 
 if __name__ == "__main__":
     # use_reloader=False per non avviare due volte il thread del bot.
-    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=Config.PORT, debug=True, use_reloader=False)

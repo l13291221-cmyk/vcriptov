@@ -67,6 +67,9 @@ class Config:
     # Chiave usata per firmare (HMAC) i codici licenza.
     LICENSE_SIGNING_KEY = load_or_create_secret("license_signing.key")
 
+    # Porta su cui gira il sito (browser: http://localhost:5001).
+    PORT = int(os.environ.get("PORT", "5001"))
+
     # Ogni quanti secondi gira il motore di trading in background.
     BOT_INTERVAL_SECONDS = int(os.environ.get("BOT_INTERVAL_SECONDS", "30"))
 

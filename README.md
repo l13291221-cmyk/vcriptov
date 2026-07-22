@@ -96,7 +96,7 @@ Non serve conoscere Python o la riga di comando. Nella cartella del progetto:
 Lo script fa tutto da solo: installa quello che serve, la **prima volta ti chiede
 la tua Stripe Secret Key** (la incolli e premi Invio — viene salvata in
 `instance/stripe.key`, un file che resta solo sul tuo computer), e poi apre il
-sito. Quando vedi il messaggio, apri il browser su **http://127.0.0.1:5000**.
+sito. Quando vedi il messaggio, apri il browser su **http://localhost:5001**.
 
 > Prerequisito unico: avere **Python 3** installato (https://www.python.org/downloads/;
 > su Windows spunta *"Add Python to PATH"* durante l'installazione).
@@ -133,7 +133,7 @@ in `instance/`, e il motore di trading parte in background.
 
 ### 6. Apri il browser
 ```
-http://127.0.0.1:5000
+http://localhost:5001
 ```
 
 ### 7. Prova il flusso completo
