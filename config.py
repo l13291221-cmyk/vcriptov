@@ -45,16 +45,21 @@ def load_stripe_key() -> str | None:
     In questo modo la chiave sta "hardcoded" in un unico posto fisso, senza
     dover impostare variabili d'ambiente ad ogni avvio, ma resta fuori dal
     codice sorgente versionato.
-    """
-    env_key = os.environ.get("STRIPE_SECRET_KEY")
-    if env_key and env_key.strip():
-        return env_key.strip()
 
-    key_file = INSTANCE_DIR / "stripe.key"
-    if key_file.exists():
-        content = key_file.read_text(encoding="utf-8").strip()
-        if content:
-            return content
+    Ritorna None se non c'è una chiave VALIDA: in quel caso il sito gira in
+    "modalità demo" (nessun pagamento reale, codice generato subito). Una chiave
+    valida inizia con "sk_" ed è sufficientemente lunga: così un valore parziale
+    come "sk_test_" o la parola "demo" non vengono scambiati per una chiave vera.
+    """
+    candidate = os.environ.get("STRIPE_SECRET_KEY")
+    if not (candidate and candidate.strip()):
+        key_file = INSTANCE_DIR / "stripe.key"
+        candidate = key_file.read_text(encoding="utf-8") if key_file.exists() else None
+
+    if candidate:
+        candidate = candidate.strip()
+        if candidate.startswith("sk_") and len(candidate) >= 20:
+            return candidate
 
     return None
 

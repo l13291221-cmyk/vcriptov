@@ -37,22 +37,23 @@ if errorlevel 1 goto pip_error
 REM --- 3. Chiave Stripe, chiesta una sola volta (e ricontrollata) ---
 if not exist "instance" mkdir instance
 if not exist "instance\stripe.key" goto askkey
-REM La chiave valida inizia con "sk_". Se il file contiene altro, la richiedo.
-findstr /b "sk_" "instance\stripe.key" >nul 2>nul
-if errorlevel 1 goto askkey
-goto run
+REM Va bene una vera chiave "sk_" oppure la parola "demo". Altrimenti richiedo.
+findstr /b "sk_" "instance\stripe.key" >nul 2>nul && goto run
+findstr /i /b "demo" "instance\stripe.key" >nul 2>nul && goto run
+goto askkey
 
 :askkey
 echo.
 echo ----------------------------------------------
-echo Incolla la tua STRIPE SECRET KEY e premi Invio.
-echo Deve iniziare con sk_test_ per le prove oppure sk_live_ per i soldi veri.
-echo NON la chiave che inizia con pk_ : quella e' sbagliata.
+echo Per PROVARE il sito senza pagamenti, scrivi:   demo
+echo Oppure incolla la tua STRIPE SECRET KEY vera.
+echo La chiave vera inizia con sk_test_ per le prove o sk_live_ per soldi veri.
+echo NON quella che inizia con pk_ : quella e' sbagliata.
 echo ----------------------------------------------
-set /p STRIPE_KEY="Chiave: "
+set /p STRIPE_KEY="Scrivi demo oppure incolla la chiave: "
 if "%STRIPE_KEY%"=="" goto no_key
 >"instance\stripe.key" echo %STRIPE_KEY%
-echo Chiave salvata. Non te la chiedero' piu'.
+echo Salvato. Non te lo chiedero' piu'.
 
 :run
 echo.

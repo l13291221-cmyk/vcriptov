@@ -144,12 +144,16 @@ def register_routes(app: Flask):
             flash("Piano non valido.", "error")
             return redirect(url_for("index"))
         if not stripe.api_key:
-            flash(
-                "Pagamenti non configurati: incolla la tua Stripe Secret Key nel "
-                "file instance/stripe.key e riavvia l'app.",
-                "error",
+            # MODALITÀ DEMO: nessuna chiave Stripe valida configurata.
+            # Genera subito il codice, senza pagamento, per provare tutto il
+            # sito (grafica, dashboard, impostazioni) gratis.
+            key = generate_key(email, plan_id)
+            lic = License(email=email, plan=plan_id, key=key, active=True, activated=False)
+            db.session.add(lic)
+            db.session.commit()
+            return render_template(
+                "checkout.html", plan=plan, email=email, license_key=key, demo=True
             )
-            return redirect(url_for("index"))
 
         # Licenza pre-creata ma non attiva finché il pagamento non è confermato.
         key = generate_key(email, plan_id)

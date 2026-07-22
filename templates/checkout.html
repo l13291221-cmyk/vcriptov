@@ -4,9 +4,16 @@
 {% block content %}
 <div class="auth-card">
   <div class="brand-row">
-    <div class="brand-logo">✅</div>
-    <div class="brand-name">Pagamento confermato</div>
+    <div class="brand-logo">{% if demo %}🧪{% else %}✅{% endif %}</div>
+    <div class="brand-name">{% if demo %}Codice demo generato{% else %}Pagamento confermato{% endif %}</div>
   </div>
+  {% if demo %}
+  <div class="disclaimer" style="margin-bottom:14px;">
+    🧪 <strong>Modalità DEMO:</strong> nessun pagamento reale è stato effettuato.
+    Codice generato per provare il sito. Per incassare pagamenti veri, inserisci
+    una vera Stripe Secret Key (<code>sk_test_…</code> o <code>sk_live_…</code>).
+  </div>
+  {% endif %}
   <p class="lead">Piano <strong>{{ plan.name }}</strong> attivato per
   <strong>{{ email }}</strong>. Ecco il tuo codice di attivazione (lo abbiamo
   anche "inviato" alla tua email):</p>
