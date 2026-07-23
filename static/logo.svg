@@ -1,14 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
-  <!-- Scudo -->
-  <path d="M60 10 L104 26 L104 58 C104 88 84 104 60 112 C36 104 16 88 16 58 L16 26 Z"
-        fill="none" stroke="#22405e" stroke-width="7" stroke-linejoin="round"/>
-  <!-- Lettera C -->
-  <path d="M78 46 A20 20 0 1 0 78 78" fill="none" stroke="#22405e" stroke-width="9" stroke-linecap="round"/>
-  <!-- Freccia verso l'alto a destra -->
-  <path d="M46 80 L92 34" fill="none" stroke="#22405e" stroke-width="9" stroke-linecap="round"/>
-  <path d="M74 32 L94 32 L94 52" fill="none" stroke="#22405e" stroke-width="9"
-        stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Punta inferiore -->
-  <path d="M50 92 L60 100 L70 92" fill="none" stroke="#22405e" stroke-width="7"
-        stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none">
+  <g stroke="#2a4a70" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <!-- Scudo -->
+    <path d="M72 86 L120 76 L168 86 L160 142 Q150 178 120 194 Q90 178 80 142 Z" stroke-width="12"/>
+    <!-- Lettera C, aperta a destra -->
+    <path d="M120 100 A26 26 0 1 0 120 152" stroke-width="16"/>
+    <!-- Asta della freccia -->
+    <path d="M104 178 L184 90" stroke-width="13"/>
+    <!-- Chevron in basso -->
+    <path d="M110 156 L120 168 L130 156" stroke-width="10"/>
+  </g>
+  <!-- Punta della freccia -->
+  <path d="M194 80 L166 86 L184 110 Z" fill="#2a4a70"/>
 </svg>

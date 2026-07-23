@@ -1276,6 +1276,62 @@ def register_routes(app: Flask):
             db.session.commit()
         return jsonify({"ok": True})
 
+    @app.route("/api/community")
+    @login_required
+    def api_community():
+        """Andamento AGGREGATO e ANONIMO dei segnali di tutti gli utenti.
+
+        Onesto: NON inventiamo numeri. Usiamo solo i segnali reali già risolti
+        (outcome win/loss) di TUTTI gli iscritti. Il "guadagno stimato" per ogni
+        cripto è la somma di: +take_profit se il segnale ha centrato l'obiettivo,
+        -stop_loss se è andato in perdita, calcolata sull'importo del segnale.
+        È una STIMA basata sui segnali, non un profitto garantito. Se ci sono
+        pochi dati, restituiamo enough=False e in dashboard non mostriamo nulla
+        di fuorviante.
+        """
+        done = Signal.query.filter(Signal.outcome.isnot(None)).all()
+        MIN_SIGNALS = 8  # sotto questa soglia i dati non sono significativi
+        if len(done) < MIN_SIGNALS:
+            return jsonify({"enough": False, "total_signals": len(done)})
+
+        by_symbol = {}
+        wins = 0
+        for s in done:
+            base = s.max_order_eur or 20.0
+            if s.outcome == "win":
+                gain = base * (s.take_profit_pct or 0) / 100.0
+                wins += 1
+            else:
+                gain = -base * (s.stop_loss_pct or 0) / 100.0
+            d = by_symbol.setdefault(s.symbol, {"gain": 0.0, "n": 0, "wins": 0})
+            d["gain"] += gain
+            d["n"] += 1
+            if s.outcome == "win":
+                d["wins"] += 1
+
+        coins = sorted(
+            (
+                {
+                    "symbol": sym,
+                    "coin": sym.replace("/USDT", ""),
+                    "gain": round(v["gain"], 2),
+                    "signals": v["n"],
+                    "win_rate": round(v["wins"] / v["n"] * 100, 1) if v["n"] else 0,
+                }
+                for sym, v in by_symbol.items()
+            ),
+            key=lambda x: x["gain"],
+            reverse=True,
+        )
+        return jsonify({
+            "enough": True,
+            "total_signals": len(done),
+            "total_gain": round(sum(c["gain"] for c in coins), 2),
+            "win_rate": round(wins / len(done) * 100, 1),
+            "users": License.query.filter_by(active=True, activated=True).count(),
+            "top": coins[:6],
+        })
+
     @app.errorhandler(404)
     def not_found(e):
         # Pagina inesistente → riporta al paywall (prima pagina del sito).

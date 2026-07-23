@@ -132,6 +132,22 @@
       </div>
     </div>
     {% endif %}
+
+    <!-- Andamento anonimo della community -->
+    <div class="panel" id="communityPanel" style="display:none;">
+      <div class="panel-head">
+        <h2>📊 Come stanno andando gli utenti</h2>
+        <span class="hint" id="communitySummary"></span>
+      </div>
+      <p class="hint" style="margin-top:-6px;">
+        Dati <b>anonimi e aggregati</b> di tutti gli iscritti, calcolati sui segnali
+        realmente inviati dal bot (nessun nome, nessun dato personale). È una
+        <b>stima basata sui segnali</b>, non un profitto garantito:
+        i risultati passati non assicurano quelli futuri.
+      </p>
+      <div class="chart-box" style="height:280px;"><canvas id="communityChart"></canvas></div>
+      <div id="communityCoins" class="community-coins"></div>
+    </div>
   </main>
 </div>
 {% endblock %}

@@ -245,6 +245,15 @@ canvas { max-width: 100%; }
   padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-soft);
   font-size: 13px;
 }
+/* Andamento anonimo della community */
+.community-coins { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.community-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px; background: var(--bg-soft); font-size: 14px;
+}
+.community-row.community-sub { background: transparent; padding: 4px 12px; font-size: 13px; color: var(--muted); }
+.community-row .pos { color: var(--green); }
+.community-row .neg { color: var(--red); }
 .risk-banner {
   background: rgba(255,207,92,.08); border: 1px solid rgba(255,207,92,.3);
   border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #e6d6a8;
