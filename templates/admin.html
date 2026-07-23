@@ -67,7 +67,7 @@
       <div class="panel-head"><h2>Abbonamenti attivi e provenienza</h2></div>
       <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Utente</th><th>Piano</th><th>Prezzo</th><th>Pagato</th><th>Arriva da</th><th>Data</th></tr></thead>
+          <thead><tr><th>Utente</th><th>Piano</th><th>Prezzo</th><th>Pagato</th><th>Arriva da</th><th>Data</th><th>Dispositivo</th></tr></thead>
           <tbody>
             {% for r in rows %}
             <tr>
@@ -77,9 +77,17 @@
               <td>{% if r.paid %}<span class="tag tag-executed">sì</span>{% else %}<span class="tag tag-closed">demo</span>{% endif %}</td>
               <td>{{ r.influencer }}</td>
               <td class="hint">{{ r.date }}</td>
+              <td>
+                {% if r.device_bound %}
+                <form method="POST" action="{{ url_for('reset_device') }}" style="margin:0;">
+                  <input type="hidden" name="license_id" value="{{ r.id }}" />
+                  <button type="submit" class="btn btn-ghost btn-sm" title="Permetti l'accesso da un nuovo dispositivo">🔓 Sblocca</button>
+                </form>
+                {% else %}<span class="hint">—</span>{% endif %}
+              </td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="empty">Ancora nessun abbonato</td></tr>
+            <tr><td colspan="7" class="empty">Ancora nessun abbonato</td></tr>
             {% endfor %}
           </tbody>
         </table>

@@ -24,6 +24,7 @@ class License(db.Model):
     # se in seguito rinomini lo slot, così l'attribuzione storica resta corretta.
     influencer_name = db.Column(db.String(120), nullable=True)
     terms_accepted = db.Column(db.Boolean, default=False)   # ha accettato rischi/termini
+    device_id = db.Column(db.String(64), nullable=True)     # dispositivo a cui è legato il codice
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     activated_at = db.Column(db.DateTime, nullable=True)
 

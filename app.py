@@ -8,6 +8,7 @@ Avvio rapido:
 Poi apri http://127.0.0.1:5000
 """
 
+import secrets
 import time
 from datetime import datetime
 from functools import wraps
@@ -72,6 +73,7 @@ def ensure_schema():
         "influencer_slot": "INTEGER",
         "influencer_name": "VARCHAR(120)",
         "terms_accepted": "BOOLEAN DEFAULT 0",
+        "device_id": "VARCHAR(64)",
     }
     try:
         with db.engine.begin() as conn:
@@ -135,6 +137,24 @@ def create_app() -> Flask:
 
 
 # ------------------------------------------------------------------ helpers
+DEVICE_COOKIE = "vcriptov_device"
+
+
+def get_or_make_device_id() -> str:
+    """Identificativo del dispositivo (browser), salvato in un cookie. Serve a
+    legare un codice a un solo dispositivo ed evitare che venga condiviso."""
+    did = request.cookies.get(DEVICE_COOKIE)
+    return did if did else secrets.token_hex(16)
+
+
+def set_device_cookie(response, device_id: str):
+    response.set_cookie(
+        DEVICE_COOKIE, device_id, max_age=60 * 60 * 24 * 365,
+        httponly=True, samesite="Lax",
+    )
+    return response
+
+
 def current_license():
     lic_id = session.get("license_id")
     if not lic_id:
@@ -148,7 +168,7 @@ def login_required(view):
         lic = current_license()
         if not lic or not lic.active or not lic.activated:
             session.clear()
-            return redirect(url_for("activate"))
+            return redirect(url_for("index"))
         ep = request.endpoint
         # Prima chiedi da quale influencer arriva, poi l'accettazione dei termini.
         if lic.influencer_slot is None and ep not in ("choose_influencer", "logout"):
@@ -220,6 +240,18 @@ def register_routes(app: Flask):
     def index():
         if current_license():
             return redirect(url_for("dashboard"))
+        # Auto-accesso dal dispositivo già registrato: chi ha già attivato su
+        # QUESTO dispositivo rientra senza reinserire il codice.
+        did = request.cookies.get(DEVICE_COOKIE)
+        if did:
+            lic = (
+                License.query.filter_by(device_id=did, active=True, activated=True)
+                .order_by(License.activated_at.desc())
+                .first()
+            )
+            if lic:
+                session["license_id"] = lic.id
+                return redirect(url_for("dashboard"))
         return render_template(
             "paywall.html",
             plans=[PLANS[p] for p in PLAN_ORDER],
@@ -350,28 +382,30 @@ def register_routes(app: Flask):
                 flash("Codice di attivazione corrotto.", "error")
                 return redirect(url_for("activate"))
 
+            # ANTI-CONDIVISIONE: il codice è legato al primo dispositivo.
+            device_id = get_or_make_device_id()
+            if lic.device_id and lic.device_id != device_id:
+                flash(
+                    "Questo codice è già in uso su un altro dispositivo. Se sei "
+                    "tu, contatta l'assistenza per sbloccarlo.", "error",
+                )
+                return redirect(url_for("activate"))
+
+            if not lic.device_id:
+                lic.device_id = device_id  # primo dispositivo → lo lego qui
             if not lic.activated:
                 lic.activated = True
                 lic.activated_at = datetime.utcnow()
             if lic.settings is None:
                 db.session.add(Setting(license_id=lic.id, contact_email=lic.email))
-            if lic.portfolio is None:
-                db.session.add(
-                    Portfolio(
-                        license_id=lic.id,
-                        cash=Config.STARTING_EQUITY,
-                        starting_equity=Config.STARTING_EQUITY,
-                    )
-                )
             db.session.commit()
 
             session.clear()
             session["license_id"] = lic.id
             flash(f"Benvenuto! Piano {get_plan(lic.plan)['name']} attivato.", "success")
             # Prima di entrare, chiediamo da quale influencer arriva.
-            if lic.influencer_slot is None:
-                return redirect(url_for("choose_influencer"))
-            return redirect(url_for("dashboard"))
+            dest = url_for("choose_influencer") if lic.influencer_slot is None else url_for("dashboard")
+            return set_device_cookie(redirect(dest), device_id)
 
         return render_template("activate.html")
 
@@ -475,17 +509,22 @@ def register_routes(app: Flask):
             # Nome fotografato all'iscrizione; fallback allo slot per dati vecchi.
             return s.influencer_name or influencers.get(s.influencer_slot) or "—"
 
+        # GRAFICO: solo i 5 influencer ATTUALI (per nome corrente). Se rinomini
+        # uno slot, il vecchio nome sparisce dal grafico e il nuovo parte da 0
+        # (conta solo gli utenti la cui provenienza coincide col nome attuale).
+        current_names = [i.name for i in inf_objs]
+        per_influencer = {name: 0 for name in current_names}
         per_plan = {}
-        per_influencer = {}
         for s in active:
             per_plan[s.plan] = per_plan.get(s.plan, 0) + 1
-            nm = src_name(s)
-            per_influencer[nm] = per_influencer.get(nm, 0) + 1
+            if s.influencer_name in per_influencer:
+                per_influencer[s.influencer_name] += 1
 
         rows = [{
-            "email": s.email, "plan": get_plan(s.plan)["name"],
+            "id": s.id, "email": s.email, "plan": get_plan(s.plan)["name"],
             "price": get_plan(s.plan)["price_eur"], "paid": s.paid,
             "influencer": src_name(s),
+            "device_bound": bool(s.device_id),
             "date": s.created_at.strftime("%d/%m/%Y") if s.created_at else "—",
         } for s in active]
 
@@ -517,6 +556,21 @@ def register_routes(app: Flask):
                 inf.password_enc = encrypt(pw)
         db.session.commit()
         flash("Influencer aggiornati (nomi e password).", "success")
+        return redirect(url_for("admin"))
+
+    @app.route("/admin/reset-device", methods=["POST"])
+    @admin_required
+    def reset_device():
+        """Sblocca il dispositivo di un utente: potrà rientrare da uno nuovo.
+        Utile quando un cliente cambia telefono o cancella i cookie."""
+        try:
+            lic = db.session.get(License, int(request.form.get("license_id", 0)))
+        except (ValueError, TypeError):
+            lic = None
+        if lic:
+            lic.device_id = None
+            db.session.commit()
+            flash(f"Dispositivo di {lic.email} sbloccato.", "success")
         return redirect(url_for("admin"))
 
     # ---------- Dashboard ----------
@@ -760,7 +814,8 @@ def register_routes(app: Flask):
 
     @app.errorhandler(404)
     def not_found(e):
-        return render_template("activate.html"), 404
+        # Pagina inesistente → riporta al paywall (prima pagina del sito).
+        return redirect(url_for("index"))
 
 
 app = create_app()
