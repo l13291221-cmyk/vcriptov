@@ -111,8 +111,6 @@ dagli aggiornamenti: restano sempre al loro posto.
 Non serve conoscere Python o la riga di comando. Nella cartella del progetto:
 
 - **Windows:** fai **doppio click su `start.bat`**.
-- **Mac / Linux:** fai doppio click su `start.sh` (oppure apri il Terminale nella
-  cartella e scrivi `bash start.sh`).
 
 Lo script fa tutto da solo: installa quello che serve, la **prima volta ti chiede
 la tua Stripe Secret Key** (la incolli e premi Invio — viene salvata in
