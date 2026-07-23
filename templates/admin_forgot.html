@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Recupero password — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="brand-row">
+    <div class="brand-logo brand-logo--img"><img src="{{ url_for('static', filename='logo.svg') }}?v={{ asset_v }}" alt="VCriptoV" /></div>
+    <div class="brand-name">Recupero password</div>
+  </div>
+  <p class="lead">Ti invieremo un <strong>codice</strong> alla tua email
+  (<strong>{{ creator_email }}</strong>). Con quel codice potrai impostare una
+  nuova password.</p>
+
+  {% if email_ok %}
+  <form method="POST" action="{{ url_for('admin_forgot') }}">
+    <button type="submit" class="btn btn-primary btn-block">📧 Inviami il codice</button>
+  </form>
+  <p class="hint" style="margin-top:14px;text-align:center;">
+    Hai già il codice? <a href="{{ url_for('admin_reset') }}">Inseriscilo qui →</a>
+  </p>
+  {% else %}
+  <div class="disclaimer">
+    ⚠️ L'invio email non è ancora configurato, quindi il recupero automatico non
+    è disponibile. Per ora reimposta la password creando il file
+    <code>instance/admin_password.txt</code> con la nuova password. Per attivare
+    il recupero via email, imposta le variabili SMTP (vedi DEPLOY.md).
+  </div>
+  {% endif %}
+
+  <p class="hint" style="margin-top:16px;text-align:center;">
+    <a href="{{ url_for('admin_login') }}">← Torna al login</a>
+  </p>
+</div>
+{% endblock %}

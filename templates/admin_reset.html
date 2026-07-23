@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Nuova password — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="brand-row">
+    <div class="brand-logo brand-logo--img"><img src="{{ url_for('static', filename='logo.svg') }}?v={{ asset_v }}" alt="VCriptoV" /></div>
+    <div class="brand-name">Imposta nuova password</div>
+  </div>
+  <p class="lead">Inserisci il codice ricevuto via email e scegli la nuova password.</p>
+
+  <form method="POST" action="{{ url_for('admin_reset') }}">
+    <div class="field">
+      <label>Codice ricevuto via email</label>
+      <input type="text" name="code" inputmode="numeric" placeholder="es. 123456" autocomplete="off" required autofocus />
+    </div>
+    <div class="field">
+      <label>Nuova password (min. 6 caratteri)</label>
+      <input type="password" name="new_password" autocomplete="off" required />
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Salva nuova password →</button>
+  </form>
+
+  <p class="hint" style="margin-top:16px;text-align:center;">
+    <a href="{{ url_for('admin_forgot') }}">← Rinvia il codice</a> ·
+    <a href="{{ url_for('admin_login') }}">Torna al login</a>
+  </p>
+</div>
+{% endblock %}

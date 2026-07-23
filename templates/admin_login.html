@@ -21,11 +21,10 @@
     <button type="submit" class="btn btn-primary btn-block">Entra →</button>
   </form>
 
-  <div class="disclaimer" style="margin-top:16px;">
-    <b>Password dimenticata?</b> Il recupero è legato alla tua email
-    ({{ creator_email }}). Per reimpostarla, crea il file
-    <code>instance/admin_password.txt</code> con la nuova password (vedi guida).
-  </div>
+  <p class="hint" style="margin-top:16px;text-align:center;">
+    <a href="{{ url_for('admin_forgot') }}">🔑 Password dimenticata?</a>
+    — ti inviamo un codice sulla tua email.
+  </p>
 
   <p class="hint" style="margin-top:14px;text-align:center;">
     <a href="{{ url_for('index') }}">← Torna al sito</a>

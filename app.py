@@ -28,14 +28,21 @@ from flask import (
     url_for,
 )
 
-from admin import ADMIN_EMAIL, check_admin_password
+from admin import (
+    ADMIN_EMAIL,
+    check_admin_password,
+    clear_reset_code,
+    create_reset_code,
+    set_admin_password,
+    verify_reset_code,
+)
 from bot import init_engine
 from config import Config
 from exchange_account import account_snapshot
 from licensing import generate_key, normalize, verify_checksum
 from market import MARKET_EXCHANGE, market
 from notify import send_telegram
-from emailer import send_activation_email
+from emailer import email_configured, send_activation_email, send_email
 from models import (
     EquityPoint,
     Influencer,
@@ -663,6 +670,44 @@ def register_routes(app: Flask):
             flash("Email o password errate.", "error")
             return redirect(url_for("admin_login"))
         return render_template("admin_login.html", creator_email=CREATOR_EMAIL)
+
+    @app.route("/admin/forgot", methods=["GET", "POST"])
+    def admin_forgot():
+        if request.method == "POST":
+            if not email_configured():
+                flash(
+                    "L'invio email non è configurato: usa il metodo con il file "
+                    "instance/admin_password.txt, oppure imposta le variabili SMTP.",
+                    "error",
+                )
+                return redirect(url_for("admin_forgot"))
+            code = create_reset_code()
+            send_email(
+                CREATOR_EMAIL, "VCriptoV — Codice reset password",
+                f"Il tuo codice per reimpostare la password del creatore è:\n\n"
+                f"    {code}\n\nValido 15 minuti. Se non l'hai richiesto, ignora questa email.",
+            )
+            flash(f"Codice inviato a {CREATOR_EMAIL}. Controlla la posta.", "success")
+            return redirect(url_for("admin_reset"))
+        return render_template("admin_forgot.html", creator_email=CREATOR_EMAIL,
+                               email_ok=email_configured())
+
+    @app.route("/admin/reset", methods=["GET", "POST"])
+    def admin_reset():
+        if request.method == "POST":
+            code = (request.form.get("code") or "").strip()
+            new_pw = (request.form.get("new_password") or "").strip()
+            if len(new_pw) < 6:
+                flash("La nuova password deve avere almeno 6 caratteri.", "error")
+                return redirect(url_for("admin_reset"))
+            if verify_reset_code(code):
+                set_admin_password(new_pw)
+                clear_reset_code()
+                flash("Password aggiornata! Ora accedi con la nuova password.", "success")
+                return redirect(url_for("admin_login"))
+            flash("Codice non valido o scaduto.", "error")
+            return redirect(url_for("admin_reset"))
+        return render_template("admin_reset.html")
 
     @app.route("/influencer/login", methods=["GET", "POST"])
     def influencer_login():
