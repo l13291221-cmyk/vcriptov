@@ -165,6 +165,22 @@ PLANS = {
 PLAN_ORDER = ["trial", "starter", "pro", "vip", "lifetime"]
 
 
+# Strategie predefinite: impostano medie mobili, rischio, stop-loss e take-profit.
+# Prudente = pochi segnali, più sicuri; Aggressiva = più segnali, più rischio.
+STRATEGIES = {
+    "prudente":    {"name": "Prudente",    "fast_ma": 10, "slow_ma": 30, "risk": 1.0, "sl": 5.0,  "tp": 8.0,
+                    "desc": "Meno segnali, più prudenti. Rischio più basso."},
+    "bilanciata":  {"name": "Bilanciata",  "fast_ma": 5,  "slow_ma": 20, "risk": 2.0, "sl": 8.0,  "tp": 15.0,
+                    "desc": "Equilibrio tra numero di segnali e rischio."},
+    "aggressiva":  {"name": "Aggressiva",  "fast_ma": 3,  "slow_ma": 10, "risk": 4.0, "sl": 12.0, "tp": 25.0,
+                    "desc": "Più segnali e più rischio. Per chi accetta oscillazioni forti."},
+}
+
+
+def get_strategy(key: str) -> dict:
+    return STRATEGIES.get(key, STRATEGIES["bilanciata"])
+
+
 def get_plan(plan_id: str) -> dict | None:
     return PLANS.get(plan_id)
 

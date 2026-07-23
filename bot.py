@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 
 from analysis import answer_question
 from config import Config
+from emailer import send_email
 from exchange_account import place_signal_order
 from market import market
 from models import License, Setting, Signal, db
@@ -70,10 +71,30 @@ class TradingEngine:
         licenses = License.query.filter_by(active=True, activated=True).all()
         for lic in licenses:
             self._process_license(lic, prices)
+            self._maybe_expiry_reminder(lic)
 
         db.session.commit()
         self.last_tick = datetime.utcnow()
         self.tick_count += 1
+
+    def _maybe_expiry_reminder(self, lic):
+        """Manda una volta il promemoria quando mancano <= 3 giorni alla scadenza."""
+        if lic.expires_at is None or lic.expiry_reminder_sent:
+            return
+        delta = lic.expires_at - datetime.utcnow()
+        if not (timedelta(0) < delta <= timedelta(days=3)):
+            return
+        msg = (
+            f"⏳ Il tuo abbonamento VCriptoV scade il {lic.expires_at:%d/%m/%Y}. "
+            f"Rinnova per non perdere l'accesso ai segnali."
+        )
+        settings = lic.settings
+        if settings and self._telegram_ready(lic, settings):
+            send_telegram(decrypt(settings.telegram_token_enc), settings.telegram_chat_id,
+                          f"<b>VCriptoV</b>\n{msg}")
+        if lic.email and not lic.email.endswith("@vcriptov.local"):
+            send_email(lic.email, "VCriptoV — Abbonamento in scadenza", msg)
+        lic.expiry_reminder_sent = True
 
     def _process_license(self, lic: License, prices: dict[str, float]):
         """Manda automaticamente i segnali interattivi su Telegram (senza che
@@ -86,7 +107,12 @@ class TradingEngine:
 
         fast = settings.fast_ma or 5
         slow = settings.slow_ma or 20
-        for symbol in plan_symbols(lic.plan):
+        # Solo le crypto scelte dall'utente (vuoto = tutte quelle del piano).
+        symbols = plan_symbols(lic.plan)
+        if settings.signal_symbols:
+            chosen = set(settings.signal_symbols.split(","))
+            symbols = [s for s in symbols if s in chosen]
+        for symbol in symbols:
             if prices.get(symbol):
                 self._maybe_send_signal(lic, settings, symbol, prices[symbol], fast, slow)
 

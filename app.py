@@ -56,7 +56,15 @@ from models import (
     db,
 )
 from config import load_stripe_key
-from plans import ALL_SYMBOLS, PLAN_ORDER, PLANS, get_plan, plan_symbols
+from plans import (
+    ALL_SYMBOLS,
+    PLAN_ORDER,
+    PLANS,
+    STRATEGIES,
+    get_plan,
+    get_strategy,
+    plan_symbols,
+)
 from security import decrypt, encrypt, mask
 
 # La chiave segreta Stripe viene letta da `instance/stripe.key` (o dalla
@@ -79,6 +87,8 @@ def ensure_schema():
         "max_order_eur": "FLOAT DEFAULT 20.0",
         "stop_loss_pct": "FLOAT DEFAULT 8.0",
         "take_profit_pct": "FLOAT DEFAULT 15.0",
+        "strategy": "VARCHAR(20) DEFAULT 'bilanciata'",
+        "signal_symbols": "TEXT",
     }
     license_cols = {
         "paid": "BOOLEAN DEFAULT 0",
@@ -92,6 +102,7 @@ def ensure_schema():
         "stripe_subscription_id": "VARCHAR(120)",
         "last_review_month": "VARCHAR(7)",
         "recovery_phone": "VARCHAR(40)",
+        "expiry_reminder_sent": "BOOLEAN DEFAULT 0",
     }
     try:
         with db.engine.begin() as conn:
@@ -546,6 +557,7 @@ def register_routes(app: Flask):
                 base = max(lic.expires_at or datetime.utcnow(), datetime.utcnow())
                 lic.expires_at = base + timedelta(days=SUBSCRIPTION_DAYS + 1)
                 lic.active = True
+                lic.expiry_reminder_sent = False  # rinnovato: potrà riavvisare al prossimo giro
                 db.session.commit()
         elif etype in ("customer.subscription.deleted", "invoice.payment_failed"):
             sub_id = obj.get("id") if etype.startswith("customer") else obj.get("subscription")
@@ -943,6 +955,7 @@ def register_routes(app: Flask):
         if lic:
             base = max(lic.expires_at or datetime.utcnow(), datetime.utcnow())
             lic.expires_at = base + timedelta(days=SUBSCRIPTION_DAYS)
+            lic.expiry_reminder_sent = False
             db.session.commit()
             flash(f"Abbonamento di {lic.email} esteso di 30 giorni.", "success")
         return redirect(url_for("admin"))
@@ -992,36 +1005,55 @@ def register_routes(app: Flask):
             s.telegram_chat_id = (request.form.get("telegram_chat_id") or "").strip() or None
             s.trading_enabled = request.form.get("trading_enabled") == "on"
 
-            # --- Trading reale (richiede Telegram): interruttore + protezioni ---
+            # --- Impostazioni segnali (piani con Telegram) ---
             if plan.get("telegram"):
+                # 1) Strategia predefinita: imposta medie mobili, rischio, SL e TP.
+                strat = (request.form.get("strategy") or "bilanciata").strip()
+                if strat not in STRATEGIES:
+                    strat = "bilanciata"
+                st = get_strategy(strat)
+                s.strategy = strat
+                s.fast_ma, s.slow_ma = st["fast_ma"], st["slow_ma"]
+                s.risk_per_trade, s.stop_loss_pct, s.take_profit_pct = st["risk"], st["sl"], st["tp"]
+
+                # 2) Su quali crypto ricevere i segnali (vuoto = tutte quelle del piano).
+                allowed = plan_symbols(lic.plan)
+                chosen = [c for c in request.form.getlist("signal_symbols") if c in allowed]
+                s.signal_symbols = ",".join(chosen) if chosen and len(chosen) < len(allowed) else None
+
+                # 3) Trading reale: interruttore + tetto per ordine.
                 s.live_trading = request.form.get("live_trading") == "on"
                 try:
                     s.max_order_eur = max(1.0, min(float(request.form.get("max_order_eur", 20.0)), 100000.0))
-                    s.stop_loss_pct = max(0.5, min(float(request.form.get("stop_loss_pct", 8.0)), 90.0))
-                    s.take_profit_pct = max(0.5, min(float(request.form.get("take_profit_pct", 15.0)), 500.0))
                 except (ValueError, TypeError):
-                    flash("Parametri di rischio non validi, ignorati.", "error")
+                    flash("Importo massimo non valido, ignorato.", "error")
 
-            # Parametri strategia: modificabili solo dai piani VIP/Lifetime.
+            # 4) Personalizzazione AVANZATA (solo VIP/Lifetime): sovrascrive la strategia.
             if plan.get("custom_strategy"):
                 try:
-                    s.risk_per_trade = max(0.1, min(float(request.form.get("risk_per_trade", 2.0)), 20.0))
-                    s.fast_ma = max(2, min(int(request.form.get("fast_ma", 5)), 50))
-                    s.slow_ma = max(3, min(int(request.form.get("slow_ma", 20)), 200))
+                    s.risk_per_trade = max(0.1, min(float(request.form.get("risk_per_trade", s.risk_per_trade)), 20.0))
+                    s.fast_ma = max(2, min(int(request.form.get("fast_ma", s.fast_ma)), 50))
+                    s.slow_ma = max(3, min(int(request.form.get("slow_ma", s.slow_ma)), 200))
+                    s.stop_loss_pct = max(0.5, min(float(request.form.get("stop_loss_pct", s.stop_loss_pct)), 90.0))
+                    s.take_profit_pct = max(0.5, min(float(request.form.get("take_profit_pct", s.take_profit_pct)), 500.0))
                     if s.fast_ma >= s.slow_ma:
                         s.slow_ma = s.fast_ma + 1
                 except (ValueError, TypeError):
-                    flash("Parametri strategia non validi, ignorati.", "error")
+                    flash("Parametri avanzati non validi, ignorati.", "error")
 
             db.session.commit()
             flash("Impostazioni salvate.", "success")
             return redirect(url_for("settings_view"))
 
+        chosen = set((s.signal_symbols or "").split(",")) if s.signal_symbols else set()
         return render_template(
             "settings.html",
             license=lic,
             plan=plan,
             s=s,
+            strategies=STRATEGIES,
+            plan_symbol_list=plan_symbols(lic.plan),
+            chosen_symbols=chosen,
             masked_api_key=mask(decrypt(s.api_key_enc)),
             masked_api_secret=mask(decrypt(s.api_secret_enc)),
             masked_telegram=mask(decrypt(s.telegram_token_enc)),

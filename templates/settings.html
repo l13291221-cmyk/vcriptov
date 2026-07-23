@@ -99,25 +99,72 @@
       </div>
 
       {% if plan.telegram %}
+      <div class="panel">
+        <h2>🎯 Strategia</h2>
+        <p class="hint">Scegli quanto vuoi essere prudente o aggressivo. Imposta in automatico rischio, stop loss e take profit.</p>
+        <div class="strategy-grid">
+          {% for key, st in strategies.items() %}
+          <label class="strategy-opt {% if s.strategy == key %}selected{% endif %}">
+            <input type="radio" name="strategy" value="{{ key }}" hidden {% if s.strategy == key %}checked{% endif %} />
+            <div class="strategy-name">{{ st.name }}</div>
+            <div class="hint">{{ st.desc }}</div>
+            <div class="strategy-meta">🛑 {{ st.sl }}%  ·  🎯 {{ st.tp }}%</div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>🪙 Crypto da seguire</h2>
+        <p class="hint">Ricevi i segnali solo per le crypto che scegli. Se non ne selezioni nessuna, le ricevi tutte.</p>
+        <div class="coin-grid">
+          {% for sym in plan_symbol_list %}
+          <label class="coin-chip {% if sym in chosen_symbols %}on{% endif %}">
+            <input type="checkbox" name="signal_symbols" value="{{ sym }}" hidden {% if sym in chosen_symbols %}checked{% endif %} />
+            {{ sym.replace('/USDT','') }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
       <div class="panel danger-panel">
         <h2>⚠️ Trading REALE su Kraken (soldi veri)</h2>
         <p class="hint">
           Se acceso, quando tocchi <b>✅ Investi</b> sul messaggio Telegram il bot
-          piazza un ordine <b>vero</b> sul tuo conto Kraken (con stop loss e take
-          profit). Servono API Key/Secret Kraken <b>con permesso di trading</b>.
-          <b>Si rischiano soldi veri.</b> Inizia con importi piccolissimi.
+          piazza un ordine <b>vero</b> sul tuo conto Kraken (con lo stop loss e take
+          profit della strategia scelta). Servono API Key/Secret Kraken <b>con
+          permesso di trading</b>. <b>Si rischiano soldi veri.</b> Inizia piccolo.
         </p>
         <div class="toggle-row danger-toggle">
           <input type="checkbox" name="live_trading" id="lt" {% if s.live_trading %}checked{% endif %} />
           <label for="lt" style="margin:0;font-weight:700;">Attiva il trading reale (parte SPENTO)</label>
         </div>
-        <div class="settings-grid" style="margin-top:12px;">
+        <div class="field" style="margin-top:12px;max-width:280px;">
+          <label>Importo massimo per ordine (€)</label>
+          <input type="number" name="max_order_eur" step="1" min="1" value="{{ s.max_order_eur or 20 }}" />
+          <div class="hint">Tetto di spesa per ogni singolo investimento.</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if plan.custom_strategy %}
+      <div class="panel">
+        <h2>🔧 Personalizzazione avanzata (VIP)</h2>
+        <p class="hint">Facoltativo: affina i parametri oltre alla strategia scelta sopra. Sovrascrive i valori della strategia.</p>
+        <div class="settings-grid">
           <div class="field">
-            <label>Importo massimo per ordine (€)</label>
-            <input type="number" name="max_order_eur" step="1" min="1" value="{{ s.max_order_eur or 20 }}" />
-            <div class="hint">Tetto di spesa per ogni singolo investimento.</div>
+            <label>Rischio per operazione (%)</label>
+            <input type="number" name="risk_per_trade" step="0.1" min="0.1" max="20" value="{{ s.risk_per_trade }}" />
           </div>
           <div></div>
+          <div class="field">
+            <label>Media mobile veloce (periodi)</label>
+            <input type="number" name="fast_ma" min="2" max="50" value="{{ s.fast_ma }}" />
+          </div>
+          <div class="field">
+            <label>Media mobile lenta (periodi)</label>
+            <input type="number" name="slow_ma" min="3" max="200" value="{{ s.slow_ma }}" />
+          </div>
           <div class="field">
             <label>Stop loss (%)</label>
             <input type="number" name="stop_loss_pct" step="0.5" min="0.5" value="{{ s.stop_loss_pct or 8 }}" />
@@ -129,33 +176,6 @@
         </div>
       </div>
       {% endif %}
-
-      <div class="panel {% if not plan.custom_strategy %}locked{% endif %}">
-        <h2>Strategia &amp; Rischio {% if not plan.custom_strategy %}🔒{% endif %}</h2>
-        {% if plan.custom_strategy %}
-          <p class="hint">Personalizza i parametri del motore a incrocio di medie mobili.</p>
-          <div class="settings-grid">
-            <div class="field">
-              <label>Rischio per operazione (%)</label>
-              <input type="number" name="risk_per_trade" step="0.1" min="0.1" max="20" value="{{ s.risk_per_trade }}" />
-            </div>
-            <div></div>
-            <div class="field">
-              <label>Media mobile veloce (periodi)</label>
-              <input type="number" name="fast_ma" min="2" max="50" value="{{ s.fast_ma }}" />
-            </div>
-            <div class="field">
-              <label>Media mobile lenta (periodi)</label>
-              <input type="number" name="slow_ma" min="3" max="200" value="{{ s.slow_ma }}" />
-            </div>
-          </div>
-        {% else %}
-          <p class="lock-note">Parametri personalizzabili disponibili solo nei piani VIP e Lifetime.</p>
-          <input type="hidden" name="risk_per_trade" value="{{ s.risk_per_trade }}" />
-          <input type="hidden" name="fast_ma" value="{{ s.fast_ma }}" />
-          <input type="hidden" name="slow_ma" value="{{ s.slow_ma }}" />
-        {% endif %}
-      </div>
 
       <div class="panel">
         <div class="toggle-row">
@@ -198,5 +218,22 @@
       }
     });
   }
+
+  // Selezione strategia (radio a schede)
+  document.querySelectorAll('.strategy-opt').forEach((o) => {
+    o.addEventListener('click', () => {
+      document.querySelectorAll('.strategy-opt').forEach((x) => x.classList.remove('selected'));
+      o.classList.add('selected');
+      o.querySelector('input').checked = true;
+    });
+  });
+  // Chip crypto (toggle)
+  document.querySelectorAll('.coin-chip').forEach((c) => {
+    c.addEventListener('click', () => {
+      const box = c.querySelector('input');
+      box.checked = !box.checked;
+      c.classList.toggle('on', box.checked);
+    });
+  });
 </script>
 {% endblock %}

@@ -31,6 +31,7 @@ class License(db.Model):
     stripe_subscription_id = db.Column(db.String(120), nullable=True)  # id abbonamento Stripe (rinnovi)
     last_review_month = db.Column(db.String(7), nullable=True)      # "YYYY-MM" dell'ultima recensione
     recovery_phone = db.Column(db.String(40), nullable=True)        # telefono per recupero (influencer)
+    expiry_reminder_sent = db.Column(db.Boolean, default=False)     # promemoria scadenza già inviato
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     activated_at = db.Column(db.DateTime, nullable=True)
 
@@ -68,6 +69,8 @@ class Setting(db.Model):
     fast_ma = db.Column(db.Integer, default=5)             # media mobile veloce
     slow_ma = db.Column(db.Integer, default=20)            # media mobile lenta
     trading_enabled = db.Column(db.Boolean, default=True)  # motore demo (paper) attivo
+    strategy = db.Column(db.String(20), default="bilanciata")  # prudente/bilanciata/aggressiva
+    signal_symbols = db.Column(db.Text, nullable=True)     # crypto scelte (vuoto = tutte)
 
     # --- TRADING REALE con soldi veri sul conto Kraken del cliente ---
     # SPENTO per default: va acceso a mano e con piena consapevolezza.
