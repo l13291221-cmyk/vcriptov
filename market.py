@@ -40,6 +40,7 @@ class MarketData:
     def __init__(self):
         self._lock = threading.Lock()
         self._prices: dict[str, float] = dict(SEED_PRICES)
+        self._change: dict[str, float] = {}   # variazione % nelle 24h dal ticker
         self._history: dict[str, deque] = {s: deque(maxlen=_HISTORY_LEN) for s in ALL_SYMBOLS}
         self.source = "starting"          # "live" | "offline" | "starting"
         self.last_update: float | None = None
@@ -73,10 +74,11 @@ class MarketData:
                 closes = [float(c[4]) for c in ohlcv if c and c[4]]
                 if closes:
                     with self._lock:
+                        # Riempio lo storico per le medie mobili, ma NON tocco il
+                        # prezzo attuale (già impostato, live, da _fetch_prices).
                         self._history[sym].clear()
                         for price in closes[-_HISTORY_LEN:]:
                             self._history[sym].append(price)
-                        self._prices[sym] = closes[-1]
             except Exception:
                 # Simbolo non disponibile su questo exchange: lo salto d'ora in poi.
                 self._unsupported.add(sym)
@@ -84,31 +86,41 @@ class MarketData:
 
     # ------------------------------------------------------------------
     def step(self):
-        """Aggiorna i prezzi con i valori REALI correnti dell'exchange."""
+        """Aggiorna i prezzi reali. PRIMA i prezzi (una chiamata veloce), così la
+        dashboard si popola subito; POI, solo la prima volta, lo storico per le
+        medie mobili (più lento)."""
         if self._exchange is None:
             self.source = "offline"
             return
 
+        self._fetch_prices()
+
+        # Il bootstrap dello storico avviene DOPO i prezzi, così non ritarda la
+        # comparsa dei valori a schermo.
         if not self._bootstrapped:
             self._bootstrap()
 
+    def _fetch_prices(self):
         symbols = self._supported_symbols()
         got: dict[str, float] = {}
+        changes: dict[str, float] = {}
+
+        def take(sym, t):
+            last = t.get("last") or t.get("close")
+            if last:
+                got[sym] = float(last)
+                pct = t.get("percentage")  # variazione % nelle 24h
+                if pct is not None:
+                    changes[sym] = float(pct)
 
         try:
             tickers = self._exchange.fetch_tickers(symbols)
             for sym, t in tickers.items():
-                last = t.get("last") or t.get("close")
-                if last:
-                    got[sym] = float(last)
+                take(sym, t)
         except Exception:
-            # Fallback ticker-per-ticker: un simbolo assente non blocca gli altri.
             for sym in symbols:
                 try:
-                    t = self._exchange.fetch_ticker(sym)
-                    last = t.get("last") or t.get("close")
-                    if last:
-                        got[sym] = float(last)
+                    take(sym, self._exchange.fetch_ticker(sym))
                 except Exception:
                     self._unsupported.add(sym)
 
@@ -117,10 +129,10 @@ class MarketData:
                 for sym, price in got.items():
                     self._prices[sym] = price
                     self._history[sym].append(price)
+                self._change.update(changes)
                 self.source = "live"
                 self.last_update = time.time()
         else:
-            # Nessun dato ricevuto: resto offline, non invento nulla.
             self.source = "offline"
 
     # ------------------------------------------------------------------
@@ -131,6 +143,11 @@ class MarketData:
     def all_prices(self) -> dict[str, float]:
         with self._lock:
             return dict(self._prices)
+
+    def change(self, symbol: str) -> float | None:
+        """Variazione percentuale nelle 24h (dal ticker dell'exchange)."""
+        with self._lock:
+            return self._change.get(symbol)
 
     def history(self, symbol: str) -> list[float]:
         with self._lock:

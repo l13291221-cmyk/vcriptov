@@ -684,16 +684,12 @@ def register_routes(app: Flask):
         prices = market.all_prices()
         out = []
         for s in symbols:
-            hist = market.history(s)
-            change = 0.0
-            if len(hist) >= 2 and hist[-2]:
-                change = (hist[-1] - hist[-2]) / hist[-2] * 100
+            ch = market.change(s)  # variazione 24h reale (o None se non disponibile)
             out.append(
                 {
                     "symbol": s,
                     "price": round(prices.get(s, 0.0), 6),
-                    "change": round(change, 3),
-                    "spark": [round(x, 6) for x in hist[-40:]],
+                    "change": round(ch, 2) if ch is not None else None,
                 }
             )
         return jsonify(out)

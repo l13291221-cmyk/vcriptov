@@ -123,12 +123,14 @@
     if (!el) return;
     if (!rows || !rows.length) { el.innerHTML = '<div class="empty">Caricamento…</div>'; return; }
     el.innerHTML = rows.map((r) => {
-      const c = cls(r.change);
+      const hasCh = r.change !== null && r.change !== undefined;
+      const c = hasCh ? cls(r.change) : "";
+      const chTxt = hasCh ? sign(r.change) + "% <span class='hint'>24h</span>" : "—";
       return `<div class="price-row">
         <span class="price-sym">${r.symbol.replace("/USDT", "")}<span class="hint">/USDT</span></span>
         <span class="price-val">
           <div class="p">$${r.price.toLocaleString("it-IT", { maximumFractionDigits: 4 })}</div>
-          <div class="c ${c}">${sign(r.change)}%</div>
+          <div class="c ${c}">${chTxt}</div>
         </span>
       </div>`;
     }).join("");
@@ -180,27 +182,16 @@
     </tr>`).join("");
   }
 
-  async function refreshAll() {
-    let account = { connected: false }, prices = [], overview = null;
-    try {
-      [account, prices, overview] = await Promise.all([
-        getJSON("/api/account").catch(() => ({ connected: false })),
-        getJSON("/api/prices").catch(() => []),
-        getJSON("/api/overview").catch(() => null),
-      ]);
-    } catch (e) { /* ignora */ }
+  let lastPrices = [];
+  let lastAccount = null;
 
-    renderDataBadge(overview);
-    renderPrices(prices);
+  function applyAccount(account) {
     renderAccountPanel(account);
-    renderSignals();
-
     const connected = account && account.connected;
     document.getElementById("connectHint").style.display = connected ? "none" : "block";
     const liveLbl = document.getElementById("equity-live");
-
     if (connected) {
-      const equity = realKPIs(account, priceMap(prices));
+      const equity = realKPIs(account, priceMap(lastPrices));
       showChart(true);
       pushEquity(equity);
       realTradesTable(account);
@@ -215,6 +206,22 @@
     }
   }
 
+  function refreshAll() {
+    // Prezzi, badge e segnali: veloci → mostrati SUBITO, senza aspettare Kraken.
+    getJSON("/api/prices").then((p) => {
+      lastPrices = p; renderPrices(p);
+      if (lastAccount) applyAccount(lastAccount);  // ricalcola KPI con prezzi freschi
+    }).catch(() => {});
+    getJSON("/api/overview").then(renderDataBadge).catch(() => {});
+    renderSignals();
+    // Conto Kraken: può essere più lento → aggiornato appena pronto, a parte.
+    getJSON("/api/account").then((acc) => { lastAccount = acc; applyAccount(acc); })
+      .catch(() => {});
+  }
+
+  // Stato iniziale immediato: niente numeri finti finché il conto non risponde.
+  blankKPIs();
+  showChart(false);
   refreshAll();
   setInterval(refreshAll, 5000);
 })();
