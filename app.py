@@ -70,6 +70,7 @@ def ensure_schema():
     license_cols = {
         "paid": "BOOLEAN DEFAULT 0",
         "influencer_slot": "INTEGER",
+        "influencer_name": "VARCHAR(120)",
         "terms_accepted": "BOOLEAN DEFAULT 0",
     }
     try:
@@ -95,6 +96,21 @@ def ensure_schema():
             if not db.session.get(Influencer, slot):
                 db.session.add(Influencer(slot=slot, name=f"Influencer {slot}"))
         db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    # Backfill: per le licenze esistenti senza nome influencer salvato, uso il
+    # nome attuale dello slot (una tantum, best effort).
+    try:
+        pending = License.query.filter(
+            License.influencer_slot.isnot(None), License.influencer_name.is_(None)
+        ).all()
+        for lic in pending:
+            if 1 <= (lic.influencer_slot or 0) <= 5:
+                inf = db.session.get(Influencer, lic.influencer_slot)
+                lic.influencer_name = inf.name if inf else None
+        if pending:
+            db.session.commit()
     except Exception:
         db.session.rollback()
 
@@ -372,7 +388,10 @@ def register_routes(app: Flask):
             except (ValueError, TypeError):
                 slot = 0
             if 1 <= slot <= 5:
+                inf = db.session.get(Influencer, slot)
                 lic.influencer_slot = slot
+                # Fotografo il nome ORA: un futuro rinomino non tocca lo storico.
+                lic.influencer_name = inf.name if inf else f"Influencer {slot}"
                 db.session.commit()
                 return redirect(url_for("dashboard"))
             flash("Scegli da dove arrivi.", "error")
@@ -452,17 +471,21 @@ def register_routes(app: Flask):
         active = [s for s in subs if s.active]
         revenue = sum(get_plan(s.plan)["price_eur"] for s in active if s.paid)
 
+        def src_name(s):
+            # Nome fotografato all'iscrizione; fallback allo slot per dati vecchi.
+            return s.influencer_name or influencers.get(s.influencer_slot) or "—"
+
         per_plan = {}
-        per_influencer = {slot: 0 for slot in range(1, 6)}
+        per_influencer = {}
         for s in active:
             per_plan[s.plan] = per_plan.get(s.plan, 0) + 1
-            if s.influencer_slot in per_influencer:
-                per_influencer[s.influencer_slot] += 1
+            nm = src_name(s)
+            per_influencer[nm] = per_influencer.get(nm, 0) + 1
 
         rows = [{
             "email": s.email, "plan": get_plan(s.plan)["name"],
             "price": get_plan(s.plan)["price_eur"], "paid": s.paid,
-            "influencer": influencers.get(s.influencer_slot, "—"),
+            "influencer": src_name(s),
             "date": s.created_at.strftime("%d/%m/%Y") if s.created_at else "—",
         } for s in active]
 
@@ -474,7 +497,7 @@ def register_routes(app: Flask):
             active_count=len(active),
             per_plan={get_plan(p)["name"]: n for p, n in per_plan.items()},
             inf_access=inf_access,
-            per_influencer={influencers[k]: v for k, v in per_influencer.items()},
+            per_influencer=per_influencer,
             rows=rows,
         )
 

@@ -20,6 +20,9 @@ class License(db.Model):
     activated = db.Column(db.Boolean, default=False, nullable=False)
     paid = db.Column(db.Boolean, default=False)          # True se pagato con Stripe (non demo)
     influencer_slot = db.Column(db.Integer, nullable=True)  # 1..5, da quale influencer arriva
+    # Nome dell'influencer FOTOGRAFATO al momento dell'iscrizione: non cambia
+    # se in seguito rinomini lo slot, così l'attribuzione storica resta corretta.
+    influencer_name = db.Column(db.String(120), nullable=True)
     terms_accepted = db.Column(db.Boolean, default=False)   # ha accettato rischi/termini
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     activated_at = db.Column(db.DateTime, nullable=True)
