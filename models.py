@@ -32,6 +32,7 @@ class License(db.Model):
     last_review_month = db.Column(db.String(7), nullable=True)      # "YYYY-MM" dell'ultima recensione
     recovery_phone = db.Column(db.String(40), nullable=True)        # telefono per recupero (influencer)
     expiry_reminder_sent = db.Column(db.Boolean, default=False)     # promemoria scadenza già inviato
+    last_summary_at = db.Column(db.DateTime, nullable=True)         # ultimo riepilogo settimanale inviato
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     activated_at = db.Column(db.DateTime, nullable=True)
 
@@ -169,8 +170,23 @@ class Signal(db.Model):
     status = db.Column(db.String(16), default="pending")   # pending/executed/declined/failed/expired
     result = db.Column(db.Text, nullable=True)             # esito ordine o messaggio d'errore
     telegram_message_id = db.Column(db.String(32), nullable=True)
+    outcome = db.Column(db.String(8), nullable=True)       # win / loss (track record); None = ancora aperto
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     resolved_at = db.Column(db.DateTime, nullable=True)
+
+
+class PriceAlert(db.Model):
+    """Avviso di prezzo personale: 'avvisami se BTC scende sotto X'."""
+
+    __tablename__ = "price_alerts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    license_id = db.Column(db.Integer, db.ForeignKey("licenses.id"), nullable=False, index=True)
+    symbol = db.Column(db.String(32), nullable=False)
+    direction = db.Column(db.String(8), default="below")   # below / above
+    target = db.Column(db.Float, nullable=False)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class Review(db.Model):

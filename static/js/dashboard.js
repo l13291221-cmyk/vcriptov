@@ -172,14 +172,20 @@
     let rows;
     try { rows = await getJSON("/api/signals"); } catch (e) { return; }
     if (!rows.length) { emptyTable("signalsBody", 6, "Nessun segnale ancora"); return; }
-    body.innerHTML = rows.map((r) => `<tr>
+    body.innerHTML = rows.map((r) => {
+      let esito = `<span class="tag tag-${r.status}">${r.status}</span>`;
+      if (r.outcome === "win") esito += ' <span class="tag tag-long">✓ a target</span>';
+      else if (r.outcome === "loss") esito += ' <span class="tag tag-closed">✕ stop</span>';
+      if (r.result) esito += ' <span class="hint">' + r.result + "</span>";
+      return `<tr>
       <td><strong>${r.symbol.replace("/USDT", "")}</strong></td>
       <td><span class="tag tag-long">${r.side.toUpperCase()}</span></td>
       <td>$${(+r.ref_price).toLocaleString("it-IT", { maximumFractionDigits: 4 })}</td>
       <td class="hint">${r.sl}% / ${r.tp}%</td>
-      <td><span class="tag tag-${r.status}">${r.status}</span>${r.result ? ' <span class="hint">' + r.result + "</span>" : ""}</td>
+      <td>${esito}</td>
       <td class="hint">${r.created_at ? new Date(r.created_at).toLocaleString("it-IT") : "—"}</td>
-    </tr>`).join("");
+    </tr>`;
+    }).join("");
   }
 
   let lastPrices = [];
@@ -206,6 +212,46 @@
     }
   }
 
+  async function refreshAlerts() {
+    const el = document.getElementById("alertList");
+    if (!el) return;
+    let rows;
+    try { rows = await getJSON("/api/alerts"); } catch (e) { return; }
+    if (!rows.length) { el.innerHTML = '<div class="hint">Nessun avviso attivo.</div>'; return; }
+    el.innerHTML = rows.map((a) => `<div class="alert-row">
+      <span><b>${a.symbol.replace("/USDT", "")}</b> ${a.direction === "below" ? "sotto" : "sopra"} <b>$${a.target}</b></span>
+      <button class="btn btn-ghost btn-sm" data-id="${a.id}">✕</button>
+    </div>`).join("");
+    el.querySelectorAll("button[data-id]").forEach((b) => b.addEventListener("click", async () => {
+      await fetch("/api/alerts/" + b.dataset.id + "/delete", { method: "POST" });
+      refreshAlerts();
+    }));
+  }
+
+  async function addAlert() {
+    const sym = document.getElementById("alSymbol").value;
+    const dir = document.getElementById("alDir").value;
+    const target = document.getElementById("alTarget").value;
+    if (!target) return;
+    const body = new URLSearchParams({ symbol: sym, direction: dir, target });
+    const r = await fetch("/api/alerts", { method: "POST", body });
+    const d = await r.json();
+    if (d.ok) { document.getElementById("alTarget").value = ""; refreshAlerts(); }
+    else alert(d.error || "Errore");
+  }
+
+  async function refreshTrack() {
+    const el = document.getElementById("trackRecord");
+    if (!el) return;
+    let d;
+    try { d = await getJSON("/api/track"); } catch (e) { return; }
+    if (d.win_rate === null || d.total === 0) { el.textContent = ""; return; }
+    el.textContent = `Track record: ${d.win_rate}% a target (${d.wins}/${d.total})`;
+  }
+
+  const alAddBtn = document.getElementById("alAdd");
+  if (alAddBtn) alAddBtn.addEventListener("click", addAlert);
+
   function refreshAll() {
     // Prezzi, badge e segnali: veloci → mostrati SUBITO, senza aspettare Kraken.
     getJSON("/api/prices").then((p) => {
@@ -214,6 +260,8 @@
     }).catch(() => {});
     getJSON("/api/overview").then(renderDataBadge).catch(() => {});
     renderSignals();
+    refreshAlerts();
+    refreshTrack();
     // Conto Kraken: può essere più lento → aggiornato appena pronto, a parte.
     getJSON("/api/account").then((acc) => { lastAccount = acc; applyAccount(acc); })
       .catch(() => {});

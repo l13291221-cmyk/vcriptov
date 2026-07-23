@@ -22,7 +22,7 @@ from config import Config
 from emailer import send_email
 from exchange_account import place_signal_order
 from market import market
-from models import License, Setting, Signal, db
+from models import License, PriceAlert, Setting, Signal, db
 from notify import answer_callback, edit_message, get_updates, send_signal_message, send_telegram
 from plans import get_plan, plan_symbols
 from security import decrypt
@@ -71,11 +71,76 @@ class TradingEngine:
         licenses = License.query.filter_by(active=True, activated=True).all()
         for lic in licenses:
             self._process_license(lic, prices)
+            self._update_signal_outcomes(lic, prices)
+            self._check_price_alerts(lic, prices)
             self._maybe_expiry_reminder(lic)
+            self._maybe_weekly_summary(lic)
 
         db.session.commit()
         self.last_tick = datetime.utcnow()
         self.tick_count += 1
+
+    def _update_signal_outcomes(self, lic, prices):
+        """Track record: segna se un segnale ha raggiunto il take profit (win) o
+        lo stop loss (loss). Serve per la percentuale di successo."""
+        open_sigs = Signal.query.filter(
+            Signal.license_id == lic.id, Signal.outcome.is_(None)
+        ).all()
+        for sig in open_sigs:
+            price = prices.get(sig.symbol)
+            if not price:
+                continue
+            tp = sig.ref_price * (1 + (sig.take_profit_pct or 0) / 100)
+            sl = sig.ref_price * (1 - (sig.stop_loss_pct or 0) / 100)
+            if price >= tp:
+                sig.outcome = "win"
+            elif price <= sl:
+                sig.outcome = "loss"
+
+    def _check_price_alerts(self, lic, prices):
+        settings = lic.settings
+        if not (settings and self._telegram_ready(lic, settings)):
+            return
+        for a in PriceAlert.query.filter_by(license_id=lic.id, active=True).all():
+            price = prices.get(a.symbol)
+            if not price:
+                continue
+            hit = (a.direction == "below" and price <= a.target) or \
+                  (a.direction == "above" and price >= a.target)
+            if hit:
+                coin = a.symbol.replace("/USDT", "")
+                verso = "sceso sotto" if a.direction == "below" else "salito sopra"
+                send_telegram(
+                    decrypt(settings.telegram_token_enc), settings.telegram_chat_id,
+                    f"🔔 <b>Avviso prezzo</b>\n{coin} è {verso} {a.target:g}$. "
+                    f"Prezzo attuale: {price:,.4f}$",
+                )
+                a.active = False
+
+    def _maybe_weekly_summary(self, lic):
+        settings = lic.settings
+        if not (settings and self._telegram_ready(lic, settings)):
+            return
+        now = datetime.utcnow()
+        if lic.last_summary_at is None:
+            lic.last_summary_at = now  # primo giro: parte dalla settimana successiva
+            return
+        if now - lic.last_summary_at < timedelta(days=7):
+            return
+        week_ago = now - timedelta(days=7)
+        sigs = Signal.query.filter(
+            Signal.license_id == lic.id, Signal.created_at >= week_ago
+        ).all()
+        wins = sum(1 for s in sigs if s.outcome == "win")
+        losses = sum(1 for s in sigs if s.outcome == "loss")
+        send_telegram(
+            decrypt(settings.telegram_token_enc), settings.telegram_chat_id,
+            f"📅 <b>Riepilogo settimanale VCriptoV</b>\n"
+            f"Segnali inviati: <b>{len(sigs)}</b>\n"
+            f"🎯 A target: {wins}   🔻 In perdita: {losses}\n\n"
+            f"⚠️ <i>Nessun bot è accurato al 100%. Valuta sempre tu.</i>",
+        )
+        lic.last_summary_at = now
 
     def _maybe_expiry_reminder(self, lic):
         """Manda una volta il promemoria quando mancano <= 3 giorni alla scadenza."""

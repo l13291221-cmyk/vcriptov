@@ -102,7 +102,27 @@
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h2>📨 Segnali inviati su Telegram</h2></div>
+      <div class="panel-head"><h2>🔔 Avvisi di prezzo</h2></div>
+      <p class="hint" style="margin-top:-6px;">Ti avvisiamo su Telegram quando una crypto raggiunge il prezzo che scegli.</p>
+      <div class="alert-form">
+        <select id="alSymbol">
+          {% for sym in symbols %}<option value="{{ sym }}">{{ sym.replace('/USDT','') }}</option>{% endfor %}
+        </select>
+        <select id="alDir">
+          <option value="below">scende sotto</option>
+          <option value="above">sale sopra</option>
+        </select>
+        <input type="number" id="alTarget" placeholder="Prezzo ($)" step="any" />
+        <button type="button" class="btn btn-primary btn-sm" id="alAdd">+ Aggiungi</button>
+      </div>
+      <div id="alertList" class="alert-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>📨 Segnali inviati su Telegram</h2>
+        <span class="hint" id="trackRecord"></span>
+      </div>
       <p class="hint" style="margin-top:-6px;">I segnali sono indicativi e non accurati al 100%: valuta sempre tu prima di investire.</p>
       <div style="overflow-x:auto;">
         <table>

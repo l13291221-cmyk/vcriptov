@@ -48,6 +48,7 @@ from models import (
     EquityPoint,
     Influencer,
     License,
+    PriceAlert,
     Portfolio,
     Review,
     Setting,
@@ -103,6 +104,7 @@ def ensure_schema():
         "last_review_month": "VARCHAR(7)",
         "recovery_phone": "VARCHAR(40)",
         "expiry_reminder_sent": "BOOLEAN DEFAULT 0",
+        "last_summary_at": "DATETIME",
     }
     try:
         with db.engine.begin() as conn:
@@ -114,6 +116,9 @@ def ensure_schema():
             for col, ddl in license_cols.items():
                 if col not in existing_l:
                     conn.execute(text(f"ALTER TABLE licenses ADD COLUMN {col} {ddl}"))
+            existing_sig = {row[1] for row in conn.execute(text("PRAGMA table_info(signals)"))}
+            if "outcome" not in existing_sig:
+                conn.execute(text("ALTER TABLE signals ADD COLUMN outcome VARCHAR(8)"))
             existing_i = {row[1] for row in conn.execute(text("PRAGMA table_info(influencers)"))}
             for col, ddl in {
                 "password_enc": "TEXT",
@@ -1212,11 +1217,64 @@ def register_routes(app: Flask):
                 "sl": x.stop_loss_pct,
                 "tp": x.take_profit_pct,
                 "status": x.status,
+                "outcome": x.outcome,
                 "result": x.result,
                 "created_at": x.created_at.isoformat() if x.created_at else None,
             }
             for x in sigs
         ])
+
+    @app.route("/api/track")
+    @login_required
+    def api_track():
+        """Track record dei segnali: quanti hanno raggiunto il take profit."""
+        lic = current_license()
+        done = Signal.query.filter(Signal.license_id == lic.id, Signal.outcome.isnot(None)).all()
+        wins = sum(1 for s in done if s.outcome == "win")
+        total = len(done)
+        return jsonify({
+            "total": total,
+            "wins": wins,
+            "losses": total - wins,
+            "win_rate": round(wins / total * 100, 1) if total else None,
+        })
+
+    @app.route("/api/alerts", methods=["GET", "POST"])
+    @login_required
+    def api_alerts():
+        lic = current_license()
+        if request.method == "POST":
+            symbol = (request.form.get("symbol") or "").strip()
+            direction = (request.form.get("direction") or "below").strip()
+            if symbol not in plan_symbols(lic.plan) or direction not in ("below", "above"):
+                return jsonify({"ok": False, "error": "Dati non validi"}), 400
+            try:
+                target = float(request.form.get("target"))
+            except (ValueError, TypeError):
+                return jsonify({"ok": False, "error": "Prezzo non valido"}), 400
+            if PriceAlert.query.filter_by(license_id=lic.id, active=True).count() >= 20:
+                return jsonify({"ok": False, "error": "Troppi avvisi attivi"}), 400
+            db.session.add(PriceAlert(license_id=lic.id, symbol=symbol, direction=direction, target=target))
+            db.session.commit()
+            return jsonify({"ok": True})
+        alerts = (
+            PriceAlert.query.filter_by(license_id=lic.id, active=True)
+            .order_by(PriceAlert.created_at.desc()).all()
+        )
+        return jsonify([
+            {"id": a.id, "symbol": a.symbol, "direction": a.direction, "target": a.target}
+            for a in alerts
+        ])
+
+    @app.route("/api/alerts/<int:alert_id>/delete", methods=["POST"])
+    @login_required
+    def api_alert_delete(alert_id):
+        lic = current_license()
+        a = db.session.get(PriceAlert, alert_id)
+        if a and a.license_id == lic.id:
+            db.session.delete(a)
+            db.session.commit()
+        return jsonify({"ok": True})
 
     @app.errorhandler(404)
     def not_found(e):

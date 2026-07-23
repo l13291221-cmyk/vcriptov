@@ -230,7 +230,21 @@ canvas { max-width: 100%; }
 .danger-toggle { padding: 10px 12px; border: 1px solid rgba(255,93,108,.4); border-radius: 10px; background: rgba(255,93,108,.08); }
 .tag-executed { background: rgba(34,201,138,.15); color: var(--green); }
 .tag-pending { background: rgba(255,207,92,.15); color: var(--yellow); }
-.tag-declined, .tag-failed { background: rgba(138,151,177,.15); color: var(--muted); }
+.tag-declined, .tag-failed, .tag-expired { background: rgba(138,151,177,.15); color: var(--muted); }
+/* Avvisi di prezzo */
+.alert-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.alert-form select, .alert-form input {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg-soft); color: var(--text); font-size: 13px;
+}
+.alert-form input { width: 130px; }
+.alert-form select:focus, .alert-form input:focus { outline: none; border-color: var(--brand); }
+.alert-list { display: flex; flex-direction: column; gap: 8px; }
+.alert-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-soft);
+  font-size: 13px;
+}
 .risk-banner {
   background: rgba(255,207,92,.08); border: 1px solid rgba(255,207,92,.3);
   border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #e6d6a8;
