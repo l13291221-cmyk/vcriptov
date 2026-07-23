@@ -16,6 +16,8 @@ services:
         value: "3.12.10"
       - key: STRIPE_SECRET_KEY
         sync: false   # da inserire a mano nel cruscotto Render (chiave sk_live_/sk_test_)
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false   # per i rinnovi automatici degli abbonamenti (vedi DEPLOY.md)
     disk:
       name: data
       mountPath: /var/data

@@ -83,7 +83,7 @@
       <div class="panel-head"><h2>Abbonamenti attivi e provenienza</h2></div>
       <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Utente</th><th>Piano</th><th>Prezzo</th><th>Pagato</th><th>Arriva da</th><th>Data</th><th>Dispositivo</th></tr></thead>
+          <thead><tr><th>Utente</th><th>Piano</th><th>Prezzo</th><th>Pagato</th><th>Arriva da</th><th>Scadenza</th><th>Dispositivo</th></tr></thead>
           <tbody>
             {% for r in rows %}
             <tr>
@@ -92,7 +92,15 @@
               <td>{{ r.price }}€</td>
               <td>{% if r.paid %}<span class="tag tag-executed">sì</span>{% else %}<span class="tag tag-closed">demo</span>{% endif %}</td>
               <td>{{ r.influencer }}</td>
-              <td class="hint">{{ r.date }}</td>
+              <td>
+                <span class="{% if r.expired %}neg{% endif %}">{{ r.expires }}</span>
+                {% if r.expires != 'mai' %}
+                <form method="POST" action="{{ url_for('extend_subscription') }}" style="margin:4px 0 0;">
+                  <input type="hidden" name="license_id" value="{{ r.id }}" />
+                  <button type="submit" class="btn btn-ghost btn-sm" title="Aggiungi 30 giorni">+30gg</button>
+                </form>
+                {% endif %}
+              </td>
               <td>
                 {% if r.device_request %}
                 <form method="POST" action="{{ url_for('reset_device') }}" style="margin:0;display:flex;align-items:center;gap:8px;">

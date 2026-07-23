@@ -46,6 +46,19 @@ Consigliato: **Render** (semplice). In alternativa Railway o un VPS.
 - Per aggiornare il sito in futuro: basta fare **push su GitHub**, Render
   ri-pubblica da solo.
 
+## Rinnovi automatici degli abbonamenti (webhook Stripe)
+Gli abbonamenti mensili scadono dopo 30 giorni. Perché il rinnovo di chi
+continua a pagare estenda l'accesso **da solo**, va collegato un webhook Stripe:
+1. Su Stripe: **Developers → Webhooks → Add endpoint**.
+2. URL endpoint: `https://IL-TUO-SITO.onrender.com/stripe/webhook`
+3. Eventi da inviare: `invoice.paid`, `invoice.payment_failed`,
+   `customer.subscription.deleted`.
+4. Stripe ti dà un **Signing secret** (`whsec_...`): mettilo su Render nella
+   variabile `STRIPE_WEBHOOK_SECRET`.
+
+Senza webhook, il blocco dopo 30 giorni funziona lo stesso, ma i rinnovi li
+dovrai estendere a mano dall'Area creatore (pulsante **+30gg**).
+
 ## Note importanti
 - **Database:** di default usa un file SQLite sul disco persistente (semplice, va
   bene per iniziare). Se un giorno avrai tanti clienti, potrai passare a un

@@ -27,6 +27,8 @@ class License(db.Model):
     device_id = db.Column(db.String(64), nullable=True)     # dispositivo a cui è legato il codice
     pending_device_id = db.Column(db.String(64), nullable=True)     # dispositivo in attesa di sblocco
     device_change_requested = db.Column(db.Boolean, default=False)  # ha chiesto accesso da nuovo device
+    expires_at = db.Column(db.DateTime, nullable=True)              # scadenza abbonamento (None = mai)
+    stripe_subscription_id = db.Column(db.String(120), nullable=True)  # id abbonamento Stripe (rinnovi)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     activated_at = db.Column(db.DateTime, nullable=True)
 

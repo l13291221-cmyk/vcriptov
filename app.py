@@ -8,9 +8,11 @@ Avvio rapido:
 Poi apri http://127.0.0.1:5000
 """
 
+import json
+import os
 import secrets
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 
 import stripe
@@ -76,6 +78,8 @@ def ensure_schema():
         "device_id": "VARCHAR(64)",
         "pending_device_id": "VARCHAR(64)",
         "device_change_requested": "BOOLEAN DEFAULT 0",
+        "expires_at": "DATETIME",
+        "stripe_subscription_id": "VARCHAR(120)",
     }
     try:
         with db.engine.begin() as conn:
@@ -145,6 +149,11 @@ def create_app() -> Flask:
 
 # ------------------------------------------------------------------ helpers
 DEVICE_COOKIE = "vcriptov_device"
+SUBSCRIPTION_DAYS = 30  # durata di un abbonamento mensile prima della scadenza
+
+
+def is_expired(lic) -> bool:
+    return bool(lic and lic.expires_at and datetime.utcnow() > lic.expires_at)
 
 
 def get_or_make_device_id() -> str:
@@ -182,6 +191,9 @@ def login_required(view):
             return redirect(url_for("choose_influencer"))
         if not lic.terms_accepted and ep not in ("terms", "choose_influencer", "logout"):
             return redirect(url_for("terms"))
+        # Abbonamento scaduto → accesso bloccato del tutto (tranne la pagina scadenza).
+        if is_expired(lic) and ep not in ("expired", "logout"):
+            return redirect(url_for("expired"))
         return view(*args, **kwargs)
 
     return wrapper
@@ -385,6 +397,12 @@ def register_routes(app: Flask):
         if not lic.active:
             lic.active = True
         lic.paid = True  # pagamento reale confermato
+        sub_id = cs.get("subscription")
+        if sub_id:
+            lic.stripe_subscription_id = sub_id
+        # Piani mensili: scadenza tra ~31 giorni (i rinnovi la estendono via webhook).
+        if not get_plan(lic.plan)["lifetime"]:
+            lic.expires_at = datetime.utcnow() + timedelta(days=SUBSCRIPTION_DAYS + 1)
         db.session.commit()
 
         return render_template(
@@ -398,6 +416,47 @@ def register_routes(app: Flask):
     def checkout_cancel():
         flash("Pagamento annullato. Puoi riprovare quando vuoi.", "error")
         return redirect(url_for("index"))
+
+    @app.route("/stripe/webhook", methods=["POST"])
+    def stripe_webhook():
+        """Riceve gli eventi Stripe: ogni pagamento mensile riuscito ESTENDE la
+        scadenza; una disdetta/mancato pagamento la fa scadere subito."""
+        payload = request.get_data()
+        secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
+        try:
+            if secret:
+                event = stripe.Webhook.construct_event(
+                    payload, request.headers.get("Stripe-Signature", ""), secret
+                )
+            else:
+                event = json.loads(payload or b"{}")
+        except Exception:
+            return "", 400
+
+        etype = event.get("type", "")
+        obj = (event.get("data") or {}).get("object") or {}
+
+        if etype == "invoice.paid":
+            sub_id = obj.get("subscription")
+            lic = License.query.filter_by(stripe_subscription_id=sub_id).first() if sub_id else None
+            if lic:
+                base = max(lic.expires_at or datetime.utcnow(), datetime.utcnow())
+                lic.expires_at = base + timedelta(days=SUBSCRIPTION_DAYS + 1)
+                lic.active = True
+                db.session.commit()
+        elif etype in ("customer.subscription.deleted", "invoice.payment_failed"):
+            sub_id = obj.get("id") if etype.startswith("customer") else obj.get("subscription")
+            lic = License.query.filter_by(stripe_subscription_id=sub_id).first() if sub_id else None
+            if lic:
+                lic.expires_at = datetime.utcnow()  # scaduto adesso → bloccato
+                db.session.commit()
+        return "", 200
+
+    @app.route("/expired")
+    @login_required
+    def expired():
+        lic = current_license()
+        return render_template("expired.html", license=lic, plan=get_plan(lic.plan))
 
     # ---------- Attivazione licenza ----------
     @app.route("/activate", methods=["GET", "POST"])
@@ -439,6 +498,9 @@ def register_routes(app: Flask):
             if not lic.activated:
                 lic.activated = True
                 lic.activated_at = datetime.utcnow()
+            # Piani mensili: parte il conto alla rovescia dei 30 giorni.
+            if not get_plan(lic.plan)["lifetime"] and lic.expires_at is None:
+                lic.expires_at = datetime.utcnow() + timedelta(days=SUBSCRIPTION_DAYS)
             if lic.settings is None:
                 db.session.add(Setting(license_id=lic.id, contact_email=lic.email))
             db.session.commit()
@@ -570,6 +632,8 @@ def register_routes(app: Flask):
             "influencer": src_name(s),
             "device_bound": bool(s.device_id),
             "device_request": bool(s.device_change_requested),
+            "expires": s.expires_at.strftime("%d/%m/%Y") if s.expires_at else "mai",
+            "expired": is_expired(s),
             "date": s.created_at.strftime("%d/%m/%Y") if s.created_at else "—",
         } for s in active]
 
@@ -655,6 +719,21 @@ def register_routes(app: Flask):
             lic.device_change_requested = False
             db.session.commit()
             flash(f"Accesso di {lic.email} sbloccato dal nuovo dispositivo.", "success")
+        return redirect(url_for("admin"))
+
+    @app.route("/admin/extend", methods=["POST"])
+    @admin_required
+    def extend_subscription():
+        """Estende manualmente un abbonamento di 30 giorni (rinnovo o omaggio)."""
+        try:
+            lic = db.session.get(License, int(request.form.get("license_id", 0)))
+        except (ValueError, TypeError):
+            lic = None
+        if lic:
+            base = max(lic.expires_at or datetime.utcnow(), datetime.utcnow())
+            lic.expires_at = base + timedelta(days=SUBSCRIPTION_DAYS)
+            db.session.commit()
+            flash(f"Abbonamento di {lic.email} esteso di 30 giorni.", "success")
         return redirect(url_for("admin"))
 
     # ---------- Dashboard ----------
