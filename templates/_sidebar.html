@@ -4,6 +4,7 @@
       <div class="brand-name" style="font-size:18px;">VCriptoV</div>
     </div>
     <a href="javascript:void(0)" onclick="toggleSupport()" class="nav-link">🎧 Assistenza</a>
+    <a href="{{ url_for('how_it_works') }}" class="nav-link">📘 Come funziona</a>
     <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
       📊 Dashboard
     </a>

@@ -9,7 +9,7 @@
     <a href="{{ url_for('admin_login') }}" class="creator-btn">🔐 Area creatore</a>
   </div>
   <div class="brand-row">
-    <div class="brand-logo">📈</div>
+    <div class="brand-logo brand-logo--img"><img src="{{ url_for('static', filename='logo.svg') }}?v={{ asset_v }}" alt="VCriptoV" /></div>
     <div>
       <div class="brand-name">VCriptoV</div>
       <div class="hint">Trading bot automatizzato per criptovalute</div>
@@ -18,7 +18,7 @@
   <h1>Sblocca il tuo bot di trading</h1>
   <p class="lead">Scegli un piano per attivare la dashboard, i segnali automatici e il
   motore di trading in background. Riceverai subito un <strong>codice di attivazione</strong>
-  da inserire per accedere.</p>
+  da inserire per accedere. <a href="{{ url_for('how_it_works') }}">📘 Come funziona?</a></p>
 
   <form method="POST" action="{{ url_for('checkout') }}" id="planForm">
     <div class="plan-grid">
@@ -59,8 +59,23 @@
     </div>
   </form>
 
+  {% if reviews %}
+  <div class="testimonials">
+    <h2 style="margin-top:34px;">⭐ Cosa dicono i clienti</h2>
+    <div class="review-grid">
+      {% for r in reviews %}
+      <div class="review-card">
+        <div class="review-stars">{{ "★" * r.rating }}{{ "☆" * (5 - r.rating) }}</div>
+        <p>{{ r.text }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <p class="hint" style="margin-top:22px;">
     Hai già un codice? <a href="{{ url_for('activate') }}">Attiva qui →</a>
+    · <a href="{{ url_for('how_it_works') }}">Come funziona</a>
   </p>
 </div>
 

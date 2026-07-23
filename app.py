@@ -35,11 +35,13 @@ from exchange_account import account_snapshot
 from licensing import generate_key, normalize, verify_checksum
 from market import MARKET_EXCHANGE, market
 from notify import send_telegram
+from emailer import send_activation_email
 from models import (
     EquityPoint,
     Influencer,
     License,
     Portfolio,
+    Review,
     Setting,
     Signal,
     Trade,
@@ -80,6 +82,8 @@ def ensure_schema():
         "device_change_requested": "BOOLEAN DEFAULT 0",
         "expires_at": "DATETIME",
         "stripe_subscription_id": "VARCHAR(120)",
+        "last_review_month": "VARCHAR(7)",
+        "recovery_phone": "VARCHAR(40)",
     }
     try:
         with db.engine.begin() as conn:
@@ -150,10 +154,18 @@ def create_app() -> Flask:
 # ------------------------------------------------------------------ helpers
 DEVICE_COOKIE = "vcriptov_device"
 SUBSCRIPTION_DAYS = 30  # durata di un abbonamento mensile prima della scadenza
+CREATOR_EMAIL = "assistenza.vcriptov@gmail.com"  # email di accesso/recupero del creatore
 
 
 def is_expired(lic) -> bool:
     return bool(lic and lic.expires_at and datetime.utcnow() > lic.expires_at)
+
+
+def needs_monthly_review(lic) -> bool:
+    """True se il cliente deve lasciare la recensione di questo mese."""
+    if session.get("is_admin") or session.get("is_influencer"):
+        return False
+    return lic and lic.last_review_month != datetime.utcnow().strftime("%Y-%m")
 
 
 def get_or_make_device_id() -> str:
@@ -194,6 +206,9 @@ def login_required(view):
         # Abbonamento scaduto → accesso bloccato del tutto (tranne la pagina scadenza).
         if is_expired(lic) and ep not in ("expired", "logout"):
             return redirect(url_for("expired"))
+        # Recensione mensile obbligatoria per continuare.
+        if needs_monthly_review(lic) and ep not in ("review", "expired", "logout"):
+            return redirect(url_for("review"))
         return view(*args, **kwargs)
 
     return wrapper
@@ -271,10 +286,20 @@ def register_routes(app: Flask):
             if lic:
                 session["license_id"] = lic.id
                 return redirect(url_for("dashboard"))
+        # Testimonianze positive (social proof) sotto i piani.
+        reviews = (
+            Review.query.filter(Review.rating >= 4, Review.text.isnot(None), Review.text != "")
+            .order_by(Review.created_at.desc()).limit(6).all()
+        )
         return render_template(
             "paywall.html",
             plans=[PLANS[p] for p in PLAN_ORDER],
+            reviews=reviews,
         )
+
+    @app.route("/come-funziona")
+    def how_it_works():
+        return render_template("how_it_works.html")
 
     @app.route("/checkout", methods=["POST"])
     def checkout():
@@ -314,6 +339,24 @@ def register_routes(app: Flask):
                 lic.influencer_slot = inf_match.slot
                 lic.influencer_name = inf_match.name
 
+        # PROVA GRATUITA: nessun pagamento, accesso completo per pochi giorni.
+        if plan.get("trial"):
+            if License.query.filter_by(email=email, plan="trial").first():
+                flash("Hai già usato la prova gratuita con questa email.", "error")
+                return redirect(url_for("index"))
+            key = generate_key(email, plan_id)
+            lic = License(
+                email=email, plan=plan_id, key=key, active=True, activated=False,
+                expires_at=datetime.utcnow() + timedelta(days=plan.get("trial_days", 3)),
+            )
+            attribute(lic)
+            db.session.add(lic)
+            db.session.commit()
+            send_activation_email(email, plan["name"], key)
+            return render_template(
+                "checkout.html", plan=plan, email=email, license_key=key, demo=True, trial=True
+            )
+
         if not stripe.api_key:
             # MODALITÀ DEMO: nessuna chiave Stripe valida configurata.
             key = generate_key(email, plan_id)
@@ -321,6 +364,7 @@ def register_routes(app: Flask):
             attribute(lic)
             db.session.add(lic)
             db.session.commit()
+            send_activation_email(email, plan["name"], key)
             return render_template(
                 "checkout.html", plan=plan, email=email, license_key=key, demo=True,
                 discount=disc, influencer=(inf_match.name if inf_match else None),
@@ -404,6 +448,7 @@ def register_routes(app: Flask):
         if not get_plan(lic.plan)["lifetime"]:
             lic.expires_at = datetime.utcnow() + timedelta(days=SUBSCRIPTION_DAYS + 1)
         db.session.commit()
+        send_activation_email(lic.email, get_plan(lic.plan)["name"], lic.key)
 
         return render_template(
             "checkout.html",
@@ -436,6 +481,22 @@ def register_routes(app: Flask):
         etype = event.get("type", "")
         obj = (event.get("data") or {}).get("object") or {}
 
+        # Conferma ROBUSTA del primo pagamento: attiva la licenza anche se il
+        # cliente ha chiuso il browser prima di tornare sul sito.
+        if etype == "checkout.session.completed":
+            if obj.get("payment_status") == "paid":
+                lic = db.session.get(License, int(obj.get("client_reference_id") or 0))
+                if lic and not lic.paid:
+                    lic.active = True
+                    lic.paid = True
+                    if obj.get("subscription"):
+                        lic.stripe_subscription_id = obj.get("subscription")
+                    if not get_plan(lic.plan)["lifetime"]:
+                        lic.expires_at = datetime.utcnow() + timedelta(days=SUBSCRIPTION_DAYS + 1)
+                    db.session.commit()
+                    send_activation_email(lic.email, get_plan(lic.plan)["name"], lic.key)
+            return "", 200
+
         if etype == "invoice.paid":
             sub_id = obj.get("subscription")
             lic = License.query.filter_by(stripe_subscription_id=sub_id).first() if sub_id else None
@@ -457,6 +518,25 @@ def register_routes(app: Flask):
     def expired():
         lic = current_license()
         return render_template("expired.html", license=lic, plan=get_plan(lic.plan))
+
+    @app.route("/review", methods=["GET", "POST"])
+    @login_required
+    def review():
+        lic = current_license()
+        if not needs_monthly_review(lic):
+            return redirect(url_for("dashboard"))
+        if request.method == "POST":
+            try:
+                rating = max(1, min(int(request.form.get("rating", 5)), 5))
+            except (ValueError, TypeError):
+                rating = 5
+            text = (request.form.get("text") or "").strip()[:1000]
+            db.session.add(Review(license_id=lic.id, email=lic.email, rating=rating, text=text))
+            lic.last_review_month = datetime.utcnow().strftime("%Y-%m")
+            db.session.commit()
+            flash("Grazie per la recensione!", "success")
+            return redirect(url_for("dashboard"))
+        return render_template("review.html", license=lic, plan=get_plan(lic.plan))
 
     # ---------- Attivazione licenza ----------
     @app.route("/activate", methods=["GET", "POST"])
@@ -501,6 +581,9 @@ def register_routes(app: Flask):
             # Piani mensili: parte il conto alla rovescia dei 30 giorni.
             if not get_plan(lic.plan)["lifetime"] and lic.expires_at is None:
                 lic.expires_at = datetime.utcnow() + timedelta(days=SUBSCRIPTION_DAYS)
+            # Non chiedo la recensione nel mese di iscrizione (parte dal successivo).
+            if lic.last_review_month is None:
+                lic.last_review_month = datetime.utcnow().strftime("%Y-%m")
             if lic.settings is None:
                 db.session.add(Setting(license_id=lic.id, contact_email=lic.email))
             db.session.commit()
@@ -557,21 +640,24 @@ def register_routes(app: Flask):
     @app.route("/admin/login", methods=["GET", "POST"])
     def admin_login():
         if request.method == "POST":
-            if check_admin_password(request.form.get("password", "")):
+            email = (request.form.get("email") or "").strip().lower()
+            # Il creatore accede con la SUA email (quella dell'assistenza) + password.
+            if email == CREATOR_EMAIL and check_admin_password(request.form.get("password", "")):
                 lic = ensure_admin_license()
                 session.clear()
                 session["license_id"] = lic.id
                 session["is_admin"] = True
                 return redirect(url_for("admin"))
-            flash("Password errata.", "error")
+            flash("Email o password errate.", "error")
             return redirect(url_for("admin_login"))
-        return render_template("admin_login.html")
+        return render_template("admin_login.html", creator_email=CREATOR_EMAIL)
 
     @app.route("/influencer/login", methods=["GET", "POST"])
     def influencer_login():
         if request.method == "POST":
             name = (request.form.get("name") or "").strip()
             pw = (request.form.get("password") or "").strip()
+            phone = (request.form.get("phone") or "").strip()
             match = None
             for inf in Influencer.query.all():
                 if inf.name.strip().lower() == name.lower() and inf.password_enc:
@@ -580,6 +666,9 @@ def register_routes(app: Flask):
                         break
             if match:
                 lic = ensure_influencer_license(match.slot)
+                if phone:
+                    lic.recovery_phone = phone[:40]  # telefono per il recupero
+                    db.session.commit()
                 session.clear()
                 session["license_id"] = lic.id
                 session["is_influencer"] = True
@@ -609,19 +698,21 @@ def register_routes(app: Flask):
             .all()
         )
         active = [s for s in subs if s.active]
-        revenue = sum(get_plan(s.plan)["price_eur"] for s in active if s.paid)
+        # VALIDI = attivi e NON scaduti: solo questi contano nei numeri/grafici,
+        # così chi smette di pagare non gonfia i conteggi.
+        valid = [s for s in active if not is_expired(s)]
+        revenue = sum(get_plan(s.plan)["price_eur"] for s in valid if s.paid)
 
         def src_name(s):
             # Nome fotografato all'iscrizione; fallback allo slot per dati vecchi.
             return s.influencer_name or influencers.get(s.influencer_slot) or "—"
 
         # GRAFICO: solo i 5 influencer ATTUALI (per nome corrente). Se rinomini
-        # uno slot, il vecchio nome sparisce dal grafico e il nuovo parte da 0
-        # (conta solo gli utenti la cui provenienza coincide col nome attuale).
+        # uno slot, il vecchio nome sparisce dal grafico e il nuovo parte da 0.
         current_names = [i.name for i in inf_objs]
         per_influencer = {name: 0 for name in current_names}
         per_plan = {}
-        for s in active:
+        for s in valid:
             per_plan[s.plan] = per_plan.get(s.plan, 0) + 1
             if s.influencer_name in per_influencer:
                 per_influencer[s.influencer_name] += 1
@@ -666,8 +757,8 @@ def register_routes(app: Flask):
             license=current_license(),
             plan=get_plan("lifetime"),
             revenue=revenue,
-            active_count=len(active),
-            paid_count=sum(1 for s in active if s.paid),
+            active_count=len(valid),
+            paid_count=sum(1 for s in valid if s.paid),
             pending_devices=pending_devices,
             per_plan={get_plan(p)["name"]: n for p, n in per_plan.items()},
             inf_access=inf_access,

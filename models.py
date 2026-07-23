@@ -29,6 +29,8 @@ class License(db.Model):
     device_change_requested = db.Column(db.Boolean, default=False)  # ha chiesto accesso da nuovo device
     expires_at = db.Column(db.DateTime, nullable=True)              # scadenza abbonamento (None = mai)
     stripe_subscription_id = db.Column(db.String(120), nullable=True)  # id abbonamento Stripe (rinnovi)
+    last_review_month = db.Column(db.String(7), nullable=True)      # "YYYY-MM" dell'ultima recensione
+    recovery_phone = db.Column(db.String(40), nullable=True)        # telefono per recupero (influencer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     activated_at = db.Column(db.DateTime, nullable=True)
 
@@ -166,3 +168,16 @@ class Signal(db.Model):
     telegram_message_id = db.Column(db.String(32), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     resolved_at = db.Column(db.DateTime, nullable=True)
+
+
+class Review(db.Model):
+    """Recensione lasciata da un cliente (obbligatoria una volta al mese)."""
+
+    __tablename__ = "reviews"
+
+    id = db.Column(db.Integer, primary_key=True)
+    license_id = db.Column(db.Integer, db.ForeignKey("licenses.id"), nullable=True)
+    email = db.Column(db.String(255), nullable=True)
+    rating = db.Column(db.Integer, default=5)      # 1..5 stelle
+    text = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)

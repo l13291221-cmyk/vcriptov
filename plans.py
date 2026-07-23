@@ -138,10 +138,31 @@ PLANS = {
             "Aggiornamenti inclusi",
         ],
     },
+    "trial": {
+        "id": "trial",
+        "name": "Prova gratuita",
+        "price_eur": 0,
+        "old_price_eur": None,
+        "period": "3 giorni",
+        "lifetime": False,
+        "trial": True,
+        "trial_days": 3,
+        "symbols": ALL_SYMBOLS,
+        "sentiment": True,
+        "telegram": True,
+        "custom_strategy": False,
+        "priority_signals": False,
+        "features": [
+            "Prova TUTTO gratis per 3 giorni",
+            "Accesso completo a tutte le crypto",
+            "Notifiche Telegram incluse",
+            "Nessun pagamento richiesto",
+        ],
+    },
 }
 
-# Ordine di visualizzazione nel paywall.
-PLAN_ORDER = ["starter", "pro", "vip", "lifetime"]
+# Ordine di visualizzazione nel paywall (la prova gratuita per prima).
+PLAN_ORDER = ["trial", "starter", "pro", "vip", "lifetime"]
 
 
 def get_plan(plan_id: str) -> dict | None:

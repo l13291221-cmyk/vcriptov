@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Scudo -->
+  <path d="M60 10 L104 26 L104 58 C104 88 84 104 60 112 C36 104 16 88 16 58 L16 26 Z"
+        fill="none" stroke="#22405e" stroke-width="7" stroke-linejoin="round"/>
+  <!-- Lettera C -->
+  <path d="M78 46 A20 20 0 1 0 78 78" fill="none" stroke="#22405e" stroke-width="9" stroke-linecap="round"/>
+  <!-- Freccia verso l'alto a destra -->
+  <path d="M46 80 L92 34" fill="none" stroke="#22405e" stroke-width="9" stroke-linecap="round"/>
+  <path d="M74 32 L94 32 L94 52" fill="none" stroke="#22405e" stroke-width="9"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Punta inferiore -->
+  <path d="M50 92 L60 100 L70 92" fill="none" stroke="#22405e" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

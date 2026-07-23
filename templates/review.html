@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Lascia una recensione — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="brand-row">
+    <div class="brand-logo brand-logo--img"><img src="{{ url_for('static', filename='logo.svg') }}?v={{ asset_v }}" alt="VCriptoV" /></div>
+    <div class="brand-name">Lascia una recensione</div>
+  </div>
+  <p class="lead">Per continuare, raccontaci com'è andata questo mese con VCriptoV.
+  La tua opinione ci aiuta a migliorare.</p>
+
+  <form method="POST" action="{{ url_for('review') }}">
+    <div class="field">
+      <label>Quante stelle?</label>
+      <div class="star-pick" id="starPick">
+        {% for n in [1,2,3,4,5] %}
+        <span class="star" data-v="{{ n }}">★</span>
+        {% endfor %}
+      </div>
+      <input type="hidden" name="rating" id="ratingInput" value="5" />
+    </div>
+    <div class="field">
+      <label>Il tuo commento</label>
+      <textarea name="text" rows="4" placeholder="Scrivi qui la tua esperienza…"
+        style="width:100%;padding:13px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);font-size:15px;"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Invia e continua →</button>
+  </form>
+</div>
+
+<script>
+  const stars = document.querySelectorAll('#starPick .star');
+  const input = document.getElementById('ratingInput');
+  function paint(v) { stars.forEach(s => s.classList.toggle('on', +s.dataset.v <= v)); }
+  stars.forEach(s => {
+    s.addEventListener('click', () => { input.value = s.dataset.v; paint(+s.dataset.v); });
+    s.addEventListener('mouseenter', () => paint(+s.dataset.v));
+  });
+  document.getElementById('starPick').addEventListener('mouseleave', () => paint(+input.value));
+  paint(5);
+</script>
+{% endblock %}

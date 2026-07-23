@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Come funziona — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-wrap" style="max-width:820px;">
+  <div class="brand-row">
+    <div class="brand-logo brand-logo--img"><img src="{{ url_for('static', filename='logo.svg') }}?v={{ asset_v }}" alt="VCriptoV" /></div>
+    <div>
+      <div class="brand-name">Come funziona VCriptoV</div>
+      <div class="hint">Semplice, in 3 passaggi</div>
+    </div>
+  </div>
+
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <h3>Scegli un piano</h3>
+      <p>Attiva un abbonamento (o la prova gratuita). Ricevi subito un codice di
+      attivazione, anche via email, per entrare nella dashboard.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <h3>Collega Telegram e Kraken</h3>
+      <p>Dalle Impostazioni colleghi il tuo Telegram e il tuo conto Kraken.
+      Bastano pochi minuti, con la guida passo-passo integrata.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <h3>Ricevi i segnali</h3>
+      <p>Il bot analizza il mercato reale e ti manda i segnali su Telegram
+      (“COMPRA X, stop loss, take profit”) con i tasti Investi / Non investire.</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top:34px;">Domande frequenti</h2>
+  <div class="faq">
+    <details><summary>Il bot guadagna sicuro?</summary>
+      <p>No. I segnali sono analisi automatiche <b>non accurate al 100%</b> e non
+      sono consulenza finanziaria. Il trading di criptovalute è rischioso: puoi
+      perdere il capitale. Valuta sempre tu ogni operazione.</p></details>
+    <details><summary>Devo saper programmare o essere esperto?</summary>
+      <p>No. È tutto guidato: scegli il piano, colleghi Telegram e Kraken, e
+      ricevi i segnali. Se hai dubbi c'è l'assistenza.</p></details>
+    <details><summary>I miei soldi passano da voi?</summary>
+      <p>No. Colleghi il <b>tuo</b> conto Kraken: gli ordini restano sul tuo conto.
+      Noi non deteniamo i tuoi fondi.</p></details>
+    <details><summary>Posso disdire quando voglio?</summary>
+      <p>Sì. Gli abbonamenti mensili non si rinnovano se non paghi: alla scadenza
+      l'accesso si ferma, senza vincoli.</p></details>
+    <details><summary>Come funziona la prova gratuita?</summary>
+      <p>Provi tutte le funzioni per 3 giorni senza pagare. Alla fine, se ti trovi
+      bene, scegli un piano per continuare.</p></details>
+  </div>
+
+  <div style="margin-top:28px;display:flex;gap:12px;flex-wrap:wrap;">
+    <a href="{{ url_for('index') }}" class="btn btn-primary">← Torna agli abbonamenti</a>
+    <button type="button" class="btn btn-ghost" onclick="toggleSupport()">🎧 Assistenza</button>
+  </div>
+</div>
+{% endblock %}

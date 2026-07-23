@@ -18,6 +18,15 @@ services:
         sync: false   # da inserire a mano nel cruscotto Render (chiave sk_live_/sk_test_)
       - key: STRIPE_WEBHOOK_SECRET
         sync: false   # per i rinnovi automatici degli abbonamenti (vedi DEPLOY.md)
+      # Email col codice al cliente (facoltativo — es. Gmail con "app password")
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
     disk:
       name: data
       mountPath: /var/data

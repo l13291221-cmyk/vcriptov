@@ -7,7 +7,12 @@
     <div class="brand-logo">{% if demo %}🧪{% else %}✅{% endif %}</div>
     <div class="brand-name">{% if demo %}Codice demo generato{% else %}Pagamento confermato{% endif %}</div>
   </div>
-  {% if demo %}
+  {% if trial %}
+  <div class="disclaimer" style="margin-bottom:14px;border-color:rgba(34,201,138,.4);background:rgba(34,201,138,.06);">
+    🎁 <strong>Prova gratuita di 3 giorni attivata!</strong> Accesso completo senza
+    pagamento. Alla scadenza, scegli un piano per continuare.
+  </div>
+  {% elif demo %}
   <div class="disclaimer" style="margin-bottom:14px;">
     🧪 <strong>Modalità DEMO:</strong> nessun pagamento reale è stato effettuato.
     Codice generato per provare il sito. Per incassare pagamenti veri, inserisci

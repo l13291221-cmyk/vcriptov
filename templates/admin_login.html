@@ -7,17 +7,27 @@
     <div class="brand-logo">🔐</div>
     <div class="brand-name">Area creatore</div>
   </div>
-  <p class="lead">Accesso riservato. Inserisci la tua password.</p>
+  <p class="lead">Accesso riservato. Inserisci la tua email e la password.</p>
 
   <form method="POST" action="{{ url_for('admin_login') }}">
     <div class="field">
+      <label>Email</label>
+      <input type="email" name="email" placeholder="{{ creator_email }}" autocomplete="off" required autofocus />
+    </div>
+    <div class="field">
       <label>Password</label>
-      <input type="password" name="password" autocomplete="off" required autofocus />
+      <input type="password" name="password" autocomplete="off" required />
     </div>
     <button type="submit" class="btn btn-primary btn-block">Entra →</button>
   </form>
 
-  <p class="hint" style="margin-top:18px;text-align:center;">
+  <div class="disclaimer" style="margin-top:16px;">
+    <b>Password dimenticata?</b> Il recupero è legato alla tua email
+    ({{ creator_email }}). Per reimpostarla, crea il file
+    <code>instance/admin_password.txt</code> con la nuova password (vedi guida).
+  </div>
+
+  <p class="hint" style="margin-top:14px;text-align:center;">
     <a href="{{ url_for('index') }}">← Torna al sito</a>
   </p>
 </div>

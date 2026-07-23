@@ -19,10 +19,20 @@
       <label>Password</label>
       <input type="password" name="password" autocomplete="off" required />
     </div>
+    <div class="field">
+      <label>Numero di telefono</label>
+      <input type="tel" name="phone" placeholder="es. +39 333 1234567" autocomplete="off" />
+      <div class="hint">Serve per il recupero dell'accesso. Se il creatore cambia il tuo nome o password, dovrai reinserirlo.</div>
+    </div>
     <button type="submit" class="btn btn-primary btn-block">Entra →</button>
   </form>
 
-  <p class="hint" style="margin-top:18px;text-align:center;">
+  <div class="disclaimer" style="margin-top:16px;">
+    <b>Password dimenticata?</b> Contatta il creatore/l'assistenza
+    (assistenza.vcriptov@gmail.com): ti verrà reimpostata una nuova password.
+  </div>
+
+  <p class="hint" style="margin-top:14px;text-align:center;">
     <a href="{{ url_for('index') }}">← Torna al sito</a>
   </p>
 </div>

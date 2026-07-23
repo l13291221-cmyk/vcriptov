@@ -59,6 +59,18 @@ continua a pagare estenda l'accesso **da solo**, va collegato un webhook Stripe:
 Senza webhook, il blocco dopo 30 giorni funziona lo stesso, ma i rinnovi li
 dovrai estendere a mano dall'Area creatore (pulsante **+30gg**).
 
+## Email col codice al cliente (facoltativo)
+Per inviare al cliente un'email con il codice di attivazione dopo l'acquisto,
+imposta queste variabili (con Gmail serve una "password per app", non quella
+normale — attiva prima la verifica in due passaggi):
+- `SMTP_HOST` = `smtp.gmail.com`
+- `SMTP_PORT` = `587`
+- `SMTP_USER` = `assistenza.vcriptov@gmail.com`
+- `SMTP_PASSWORD` = la password per app di Gmail
+
+Senza queste variabili, il sito funziona lo stesso: il codice si vede a schermo
+(e resta recuperabile con "Hai già un codice? Attiva qui").
+
 ## Note importanti
 - **Database:** di default usa un file SQLite sul disco persistente (semplice, va
   bene per iniziare). Se un giorno avrai tanti clienti, potrai passare a un
