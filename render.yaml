@@ -1,0 +1,22 @@
+# Configurazione per pubblicare VCriptoV su Render (https://render.com).
+# Puoi importarla come "Blueprint", oppure creare il servizio a mano seguendo
+# DEPLOY.md. Il disco persistente (data) serve a NON perdere database, licenze
+# e impostazioni ad ogni aggiornamento: richiede un piano Render a pagamento.
+services:
+  - type: web
+    name: vcriptov
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 8 --timeout 120 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: INSTANCE_DIR
+        value: /var/data
+      - key: PYTHON_VERSION
+        value: "3.12.10"
+      - key: STRIPE_SECRET_KEY
+        sync: false   # da inserire a mano nel cruscotto Render (chiave sk_live_/sk_test_)
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1

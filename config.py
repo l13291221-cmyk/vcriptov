@@ -15,8 +15,23 @@ import secrets
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-INSTANCE_DIR = BASE_DIR / "instance"
-INSTANCE_DIR.mkdir(exist_ok=True)
+# Cartella dove salvare database e segreti. In locale è ./instance; su un server
+# si può puntare a un disco persistente impostando la variabile INSTANCE_DIR
+# (es. /var/data) così i dati non si perdono ad ogni aggiornamento.
+INSTANCE_DIR = Path(os.environ.get("INSTANCE_DIR") or (BASE_DIR / "instance"))
+INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _database_uri() -> str:
+    """Database da usare: DATABASE_URL (es. Postgres su hosting) se presente,
+    altrimenti un file SQLite nella cartella dei dati (funziona ovunque)."""
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        # SQLAlchemy vuole 'postgresql://', alcuni hosting danno 'postgres://'.
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
+    return f"sqlite:///{(INSTANCE_DIR / 'vcriptov.db').as_posix()}"
 
 
 def load_or_create_secret(name: str, nbytes: int = 32) -> bytes:
@@ -66,7 +81,7 @@ def load_stripe_key() -> str | None:
 
 class Config:
     SECRET_KEY = load_or_create_secret("flask_secret.key")
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{(INSTANCE_DIR / 'vcriptov.db').as_posix()}"
+    SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Chiave usata per firmare (HMAC) i codici licenza.
