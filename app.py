@@ -153,6 +153,7 @@ def create_app() -> Flask:
 
 # ------------------------------------------------------------------ helpers
 DEVICE_COOKIE = "vcriptov_device"
+LOGOUT_COOKIE = "vcriptov_logout"   # se presente, disattiva l'auto-accesso dopo "Esci"
 SUBSCRIPTION_DAYS = 30  # durata di un abbonamento mensile prima della scadenza
 CREATOR_EMAIL = "assistenza.vcriptov@gmail.com"  # email di accesso/recupero del creatore
 
@@ -180,6 +181,12 @@ def set_device_cookie(response, device_id: str):
         DEVICE_COOKIE, device_id, max_age=60 * 60 * 24 * 365,
         httponly=True, samesite="Lax",
     )
+    response.delete_cookie(LOGOUT_COOKIE)  # rientrato: riattivo l'auto-accesso
+    return response
+
+
+def clear_logout(response):
+    response.delete_cookie(LOGOUT_COOKIE)
     return response
 
 
@@ -275,9 +282,10 @@ def register_routes(app: Flask):
         if current_license():
             return redirect(url_for("dashboard"))
         # Auto-accesso dal dispositivo già registrato: chi ha già attivato su
-        # QUESTO dispositivo rientra senza reinserire il codice.
+        # QUESTO dispositivo rientra senza reinserire il codice — SALVO che abbia
+        # appena premuto "Esci" (in quel caso resta fuori finché non rientra).
         did = request.cookies.get(DEVICE_COOKIE)
-        if did:
+        if did and not request.cookies.get(LOGOUT_COOKIE):
             lic = (
                 License.query.filter_by(device_id=did, active=True, activated=True)
                 .order_by(License.activated_at.desc())
@@ -634,7 +642,11 @@ def register_routes(app: Flask):
     @app.route("/logout")
     def logout():
         session.clear()
-        return redirect(url_for("index"))
+        # Segno l'uscita, così l'auto-accesso dal dispositivo non ti rilogga subito.
+        resp = redirect(url_for("index"))
+        resp.set_cookie(LOGOUT_COOKIE, "1", max_age=60 * 60 * 24 * 365,
+                        httponly=True, samesite="Lax")
+        return resp
 
     # ---------- Area creatore (admin) ----------
     @app.route("/admin/login", methods=["GET", "POST"])
@@ -647,7 +659,7 @@ def register_routes(app: Flask):
                 session.clear()
                 session["license_id"] = lic.id
                 session["is_admin"] = True
-                return redirect(url_for("admin"))
+                return clear_logout(redirect(url_for("admin")))
             flash("Email o password errate.", "error")
             return redirect(url_for("admin_login"))
         return render_template("admin_login.html", creator_email=CREATOR_EMAIL)
@@ -673,7 +685,7 @@ def register_routes(app: Flask):
                 session["license_id"] = lic.id
                 session["is_influencer"] = True
                 flash(f"Benvenuto/a {match.name}! Accesso anteprima attivo.", "success")
-                return redirect(url_for("dashboard"))
+                return clear_logout(redirect(url_for("dashboard")))
             flash("Nome o password non validi.", "error")
             return redirect(url_for("influencer_login"))
         return render_template("influencer_login.html")
