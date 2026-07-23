@@ -12,6 +12,10 @@ services:
     envVars:
       - key: INSTANCE_DIR
         value: /var/data
+      # Sicurezza: chiave di cifratura SEPARATA dal database (consigliata).
+      # Generala una volta con:  python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
+      - key: FERNET_KEY
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.10"
       - key: STRIPE_SECRET_KEY

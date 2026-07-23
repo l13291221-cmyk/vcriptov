@@ -9,6 +9,14 @@ echo    VCriptoV - avvio del sito
 echo ==============================================
 echo.
 
+REM --- 0. Aggiornamento automatico (se e' un git clone) ---
+where git >nul 2>nul
+if errorlevel 1 goto skip_update
+if not exist ".git" goto skip_update
+echo Controllo aggiornamenti...
+git pull >> "%LOG%" 2>&1
+:skip_update
+
 REM --- 1. Trova Python: prima "py" (piu' affidabile su Windows), poi "python" ---
 set "PYCMD="
 where py >nul 2>nul && set "PYCMD=py"

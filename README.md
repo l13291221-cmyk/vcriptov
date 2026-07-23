@@ -85,6 +85,27 @@ vcriptov/
 Il database SQLite e i segreti generati automaticamente vengono creati nella
 cartella `instance/` (ignorata da git).
 
+## 🔄 Aggiornamenti automatici (niente più ZIP da riscaricare)
+
+Invece di scaricare lo ZIP ad ogni modifica, scarica il progetto **una volta**
+con **Git**: poi si aggiorna da solo.
+
+1. Installa **Git** una volta sola: Windows → https://git-scm.com/download/win
+   (Mac: `xcode-select --install`).
+2. Scarica il progetto **una volta** con questo comando (nella cartella dove lo
+   vuoi):
+   ```
+   git clone https://github.com/l13291221-cmyk/vcriptov.git
+   ```
+3. Da qui in poi:
+   - **`start.bat` si aggiorna DA SOLO** ad ogni avvio (scarica le novità).
+   - Oppure fai doppio click su **`aggiorna.bat`** per aggiornare quando vuoi.
+
+Le tue impostazioni e i tuoi dati (cartella `instance/`) **non vengono toccati**
+dagli aggiornamenti: restano sempre al loro posto.
+
+---
+
 ## ⚡ Avvio facile (consigliato, un solo passaggio)
 
 Non serve conoscere Python o la riga di comando. Nella cartella del progetto:

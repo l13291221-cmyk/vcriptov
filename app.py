@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 import stripe
+from werkzeug.security import check_password_hash, generate_password_hash
 from flask import (
     Flask,
     abort,
@@ -167,6 +168,32 @@ CREATOR_EMAIL = "assistenza.vcriptov@gmail.com"  # email di accesso/recupero del
 
 def is_expired(lic) -> bool:
     return bool(lic and lic.expires_at and datetime.utcnow() > lic.expires_at)
+
+
+# ---- Protezione anti "indovina la password" (brute force) ----
+_login_fails: dict[str, list] = {}
+LOGIN_MAX_FAILS = 5
+LOGIN_WINDOW = 900  # 15 minuti
+
+
+def _client_ip() -> str:
+    fwd = request.headers.get("X-Forwarded-For", "")
+    return (fwd.split(",")[0].strip() if fwd else request.remote_addr) or "?"
+
+
+def login_blocked(bucket: str) -> bool:
+    now = time.time()
+    fails = [t for t in _login_fails.get(bucket, []) if now - t < LOGIN_WINDOW]
+    _login_fails[bucket] = fails
+    return len(fails) >= LOGIN_MAX_FAILS
+
+
+def record_login_fail(bucket: str) -> None:
+    _login_fails.setdefault(bucket, []).append(time.time())
+
+
+def reset_login_fails(bucket: str) -> None:
+    _login_fails.pop(bucket, None)
 
 
 def needs_monthly_review(lic) -> bool:
@@ -656,20 +683,56 @@ def register_routes(app: Flask):
         return resp
 
     # ---------- Area creatore (admin) ----------
+    def _grant_admin():
+        lic = ensure_admin_license()
+        session.clear()
+        session["license_id"] = lic.id
+        session["is_admin"] = True
+        return clear_logout(redirect(url_for("admin")))
+
     @app.route("/admin/login", methods=["GET", "POST"])
     def admin_login():
         if request.method == "POST":
+            bucket = "admin:" + _client_ip()
+            if login_blocked(bucket):
+                flash("Troppi tentativi falliti. Riprova tra qualche minuto.", "error")
+                return redirect(url_for("admin_login"))
             email = (request.form.get("email") or "").strip().lower()
-            # Il creatore accede con la SUA email (quella dell'assistenza) + password.
+            # Il creatore accede con la SUA email (dell'assistenza) + password.
             if email == CREATOR_EMAIL and check_admin_password(request.form.get("password", "")):
-                lic = ensure_admin_license()
-                session.clear()
-                session["license_id"] = lic.id
-                session["is_admin"] = True
-                return clear_logout(redirect(url_for("admin")))
+                reset_login_fails(bucket)
+                # Verifica in 2 passaggi: se l'email è configurata, mando un codice.
+                if email_configured():
+                    code = f"{secrets.randbelow(1_000_000):06d}"
+                    session["pending_2fa"] = {
+                        "hash": generate_password_hash(code), "exp": time.time() + 600,
+                    }
+                    if send_email(CREATOR_EMAIL, "VCriptoV — Codice di accesso",
+                                  f"Il tuo codice di accesso è: {code}\nValido 10 minuti."):
+                        return redirect(url_for("admin_2fa"))
+                    session.pop("pending_2fa", None)  # invio fallito → entra comunque
+                return _grant_admin()
+            record_login_fail(bucket)
             flash("Email o password errate.", "error")
             return redirect(url_for("admin_login"))
         return render_template("admin_login.html", creator_email=CREATOR_EMAIL)
+
+    @app.route("/admin/2fa", methods=["GET", "POST"])
+    def admin_2fa():
+        pend = session.get("pending_2fa")
+        if not pend:
+            return redirect(url_for("admin_login"))
+        if request.method == "POST":
+            if time.time() > float(pend.get("exp", 0)):
+                session.pop("pending_2fa", None)
+                flash("Codice scaduto: rifai il login.", "error")
+                return redirect(url_for("admin_login"))
+            if check_password_hash(pend.get("hash", ""), (request.form.get("code") or "").strip()):
+                session.pop("pending_2fa", None)
+                return _grant_admin()
+            flash("Codice errato.", "error")
+            return redirect(url_for("admin_2fa"))
+        return render_template("admin_2fa.html", creator_email=CREATOR_EMAIL)
 
     @app.route("/admin/forgot", methods=["GET", "POST"])
     def admin_forgot():

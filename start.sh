@@ -14,6 +14,12 @@ echo "=============================================="
 echo "   VCriptoV - avvio del sito"
 echo "=============================================="
 
+# --- 0. Aggiornamento automatico (se è un git clone) -------------------
+if command -v git >/dev/null 2>&1 && [ -d ".git" ]; then
+  echo "-> Controllo aggiornamenti..."
+  git pull >/dev/null 2>&1 || true
+fi
+
 # --- 1. Python + ambiente virtuale -------------------------------------
 if ! command -v python3 >/dev/null 2>&1; then
   echo "ERRORE: Python 3 non è installato."

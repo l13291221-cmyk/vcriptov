@@ -8,6 +8,7 @@ La chiave di cifratura è generata al primo avvio e conservata in
 """
 
 import base64
+import os
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -19,8 +20,14 @@ _fernet_instance: Fernet | None = None
 def _fernet() -> Fernet:
     global _fernet_instance
     if _fernet_instance is None:
-        raw = load_or_create_secret("fernet.key", 32)
-        key = base64.urlsafe_b64encode(raw)
+        # SICUREZZA: se è impostata la variabile d'ambiente FERNET_KEY, la chiave
+        # di cifratura sta SEPARATA dal database. Così, se un giorno trapelasse
+        # solo il database, le credenziali resterebbero illeggibili.
+        env_key = os.environ.get("FERNET_KEY")
+        if env_key:
+            key = env_key.strip().encode()
+        else:
+            key = base64.urlsafe_b64encode(load_or_create_secret("fernet.key", 32))
         _fernet_instance = Fernet(key)
     return _fernet_instance
 
