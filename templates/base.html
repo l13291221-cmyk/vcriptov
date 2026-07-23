@@ -6,7 +6,7 @@
   <title>{% block title %}VCriptoV{% endblock %}</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ asset_v }}" />
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}?v={{ asset_v }}" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}?v={{ asset_v }}" />
   {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
