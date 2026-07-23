@@ -19,9 +19,9 @@
 
     <div class="kpi-grid">
       <div class="kpi">
-        <div class="label">Guadagno dagli abbonamenti</div>
+        <div class="label">Guadagno totale</div>
         <div class="value pos">{{ "%.0f"|format(revenue) }}€</div>
-        <div class="sub">solo abbonamenti pagati (no demo)</div>
+        <div class="sub">solo abbonamenti pagati</div>
       </div>
       <div class="kpi">
         <div class="label">Abbonamenti attivi</div>
@@ -30,6 +30,16 @@
           {% for name, n in per_plan.items() %}{{ name }}: {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
         </div>
       </div>
+      <div class="kpi">
+        <div class="label">Clienti paganti</div>
+        <div class="value">{{ paid_count }}</div>
+        <div class="sub">esclusi i demo</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Richieste sblocco</div>
+        <div class="value {% if pending_devices %}neg{% endif %}">{{ pending_devices }}</div>
+        <div class="sub">nuovi dispositivi in attesa</div>
+      </div>
     </div>
 
     <div class="grid-2">
@@ -37,30 +47,36 @@
         <div class="panel-head"><h2>Utenti per influencer</h2></div>
         <div class="chart-box"><canvas id="infChart"></canvas></div>
       </div>
-
       <div class="panel">
-        <div class="panel-head"><h2>Accessi influencer</h2></div>
-        <p class="hint">Dai a ogni influencer il suo <b>nome</b> e la sua <b>password</b>.
-        Lui entra da “📣 Influencer” con questi dati per registrare i video.
-        Per togliergli l'accesso, cambia la password.</p>
-        <form method="POST" action="{{ url_for('save_influencers') }}">
-          <div style="overflow-x:auto;">
-            <table>
-              <thead><tr><th>#</th><th>Nome influencer</th><th>Password</th></tr></thead>
-              <tbody>
-                {% for i in inf_access %}
-                <tr>
-                  <td>{{ i.slot }}</td>
-                  <td><input type="text" name="name_{{ i.slot }}" value="{{ i.name }}" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);" /></td>
-                  <td><input type="text" name="password_{{ i.slot }}" value="{{ i.password }}" placeholder="(nessuna: accesso bloccato)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);" /></td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          <button type="submit" class="btn btn-primary" style="margin-top:12px;">💾 Salva influencer</button>
-        </form>
+        <div class="panel-head"><h2>Incassi per mese</h2></div>
+        <div class="chart-box"><canvas id="monthChart"></canvas></div>
       </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Influencer: accessi e codici sconto</h2></div>
+      <p class="hint">Per ogni influencer: <b>nome</b> e <b>password</b> (per entrare da “📣 Influencer”),
+      più un <b>codice sconto</b> e la <b>percentuale</b>. Chi usa quel codice al pagamento ottiene lo
+      sconto e viene attribuito a quell'influencer. Per togliere l'accesso, cambia la password.</p>
+      <form method="POST" action="{{ url_for('save_influencers') }}">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>#</th><th>Nome</th><th>Password</th><th>Codice sconto</th><th>% sconto</th></tr></thead>
+            <tbody>
+              {% for i in inf_access %}
+              <tr>
+                <td>{{ i.slot }}</td>
+                <td><input type="text" name="name_{{ i.slot }}" value="{{ i.name }}" class="adm-in" /></td>
+                <td><input type="text" name="password_{{ i.slot }}" value="{{ i.password }}" placeholder="(nessuna)" class="adm-in" /></td>
+                <td><input type="text" name="code_{{ i.slot }}" value="{{ i.code }}" placeholder="es. MARIO10" class="adm-in" /></td>
+                <td><input type="number" name="pct_{{ i.slot }}" value="{{ i.pct }}" min="0" max="100" step="1" class="adm-in" style="max-width:90px;" /></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:12px;">💾 Salva influencer</button>
+      </form>
     </div>
 
     <div class="panel">
@@ -78,7 +94,13 @@
               <td>{{ r.influencer }}</td>
               <td class="hint">{{ r.date }}</td>
               <td>
-                {% if r.device_bound %}
+                {% if r.device_request %}
+                <form method="POST" action="{{ url_for('reset_device') }}" style="margin:0;display:flex;align-items:center;gap:8px;">
+                  <input type="hidden" name="license_id" value="{{ r.id }}" />
+                  <span class="tag tag-pending">⚠️ nuovo dispositivo</span>
+                  <button type="submit" class="btn btn-primary btn-sm">Sblocca</button>
+                </form>
+                {% elif r.device_bound %}
                 <form method="POST" action="{{ url_for('reset_device') }}" style="margin:0;">
                   <input type="hidden" name="license_id" value="{{ r.id }}" />
                   <button type="submit" class="btn btn-ghost btn-sm" title="Permetti l'accesso da un nuovo dispositivo">🔓 Sblocca</button>
@@ -99,21 +121,25 @@
 
 {% block scripts %}
 <script>
+  const barOpts = {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: "#8a97b1" }, grid: { display: false } },
+      y: { ticks: { color: "#8a97b1", precision: 0 }, grid: { color: "rgba(37,48,73,.5)" }, beginAtZero: true },
+    },
+  };
   const infData = {{ per_influencer|tojson }};
-  new Chart(document.getElementById("infChart").getContext("2d"), {
+  new Chart(document.getElementById("infChart"), {
     type: "bar",
-    data: {
-      labels: Object.keys(infData),
-      datasets: [{ label: "Utenti", data: Object.values(infData), backgroundColor: "#4f8cff", borderRadius: 6 }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: "#8a97b1" }, grid: { display: false } },
-        y: { ticks: { color: "#8a97b1", precision: 0 }, grid: { color: "rgba(37,48,73,.5)" }, beginAtZero: true },
-      },
-    },
+    data: { labels: Object.keys(infData), datasets: [{ data: Object.values(infData), backgroundColor: "#4f8cff", borderRadius: 6 }] },
+    options: barOpts,
+  });
+  const monthData = {{ revenue_by_month|tojson }};
+  new Chart(document.getElementById("monthChart"), {
+    type: "bar",
+    data: { labels: Object.keys(monthData), datasets: [{ data: Object.values(monthData), backgroundColor: "#22c98a", borderRadius: 6 }] },
+    options: barOpts,
   });
 </script>
 {% endblock %}

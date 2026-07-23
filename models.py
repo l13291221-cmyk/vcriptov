@@ -25,6 +25,8 @@ class License(db.Model):
     influencer_name = db.Column(db.String(120), nullable=True)
     terms_accepted = db.Column(db.Boolean, default=False)   # ha accettato rischi/termini
     device_id = db.Column(db.String(64), nullable=True)     # dispositivo a cui è legato il codice
+    pending_device_id = db.Column(db.String(64), nullable=True)     # dispositivo in attesa di sblocco
+    device_change_requested = db.Column(db.Boolean, default=False)  # ha chiesto accesso da nuovo device
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     activated_at = db.Column(db.DateTime, nullable=True)
 
@@ -135,6 +137,8 @@ class Influencer(db.Model):
     slot = db.Column(db.Integer, primary_key=True)  # 1..5
     name = db.Column(db.String(120), nullable=False)
     password_enc = db.Column(db.Text, nullable=True)  # password d'accesso, cifrata
+    discount_code = db.Column(db.String(60), nullable=True)   # codice sconto dell'influencer
+    discount_pct = db.Column(db.Float, default=0.0)          # % di sconto del codice
 
 
 class Signal(db.Model):

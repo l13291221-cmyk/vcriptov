@@ -74,6 +74,8 @@ def ensure_schema():
         "influencer_name": "VARCHAR(120)",
         "terms_accepted": "BOOLEAN DEFAULT 0",
         "device_id": "VARCHAR(64)",
+        "pending_device_id": "VARCHAR(64)",
+        "device_change_requested": "BOOLEAN DEFAULT 0",
     }
     try:
         with db.engine.begin() as conn:
@@ -86,8 +88,13 @@ def ensure_schema():
                 if col not in existing_l:
                     conn.execute(text(f"ALTER TABLE licenses ADD COLUMN {col} {ddl}"))
             existing_i = {row[1] for row in conn.execute(text("PRAGMA table_info(influencers)"))}
-            if "password_enc" not in existing_i:
-                conn.execute(text("ALTER TABLE influencers ADD COLUMN password_enc TEXT"))
+            for col, ddl in {
+                "password_enc": "TEXT",
+                "discount_code": "VARCHAR(60)",
+                "discount_pct": "FLOAT DEFAULT 0",
+            }.items():
+                if col not in existing_i:
+                    conn.execute(text(f"ALTER TABLE influencers ADD COLUMN {col} {ddl}"))
     except Exception:
         # Se qualcosa va storto (es. DB nuovo), create_all ha già fatto il lavoro.
         pass
@@ -274,29 +281,55 @@ def register_routes(app: Flask):
         if not plan:
             flash("Piano non valido.", "error")
             return redirect(url_for("index"))
+
+        # Codice sconto influencer (facoltativo): applica lo sconto e attribuisce
+        # automaticamente l'utente a quell'influencer.
+        code_in = (request.form.get("discount_code") or "").strip()
+        inf_match = None
+        if code_in:
+            inf_match = next(
+                (i for i in Influencer.query.all()
+                 if i.discount_code and i.discount_code.strip().lower() == code_in.lower()),
+                None,
+            )
+            if not inf_match:
+                flash("Codice sconto non valido.", "error")
+                return redirect(url_for("index"))
+        disc = max(0.0, min(inf_match.discount_pct or 0.0, 100.0)) if inf_match else 0.0
+
+        def attribute(lic):
+            if inf_match:
+                lic.influencer_slot = inf_match.slot
+                lic.influencer_name = inf_match.name
+
         if not stripe.api_key:
             # MODALITÀ DEMO: nessuna chiave Stripe valida configurata.
-            # Genera subito il codice, senza pagamento, per provare tutto il
-            # sito (grafica, dashboard, impostazioni) gratis.
             key = generate_key(email, plan_id)
             lic = License(email=email, plan=plan_id, key=key, active=True, activated=False)
+            attribute(lic)
             db.session.add(lic)
             db.session.commit()
             return render_template(
-                "checkout.html", plan=plan, email=email, license_key=key, demo=True
+                "checkout.html", plan=plan, email=email, license_key=key, demo=True,
+                discount=disc, influencer=(inf_match.name if inf_match else None),
             )
 
         # Licenza pre-creata ma non attiva finché il pagamento non è confermato.
         key = generate_key(email, plan_id)
         lic = License(email=email, plan=plan_id, key=key, active=False, activated=False)
+        attribute(lic)
         db.session.add(lic)
         db.session.commit()
 
-        # Piani mensili -> abbonamento ricorrente; Lifetime -> pagamento unico.
+        # Prezzo scontato (in centesimi), mai sotto zero.
+        cents = int(round(plan["price_eur"] * (1 - disc / 100.0) * 100))
+        name = f"VCriptoV — Piano {plan['name']}"
+        if disc:
+            name += f" (sconto {disc:.0f}%)"
         price_data = {
             "currency": "eur",
-            "product_data": {"name": f"VCriptoV — Piano {plan['name']}"},
-            "unit_amount": int(plan["price_eur"]) * 100,  # in centesimi
+            "product_data": {"name": name},
+            "unit_amount": max(cents, 0),
         }
         if not plan["lifetime"]:
             price_data["recurring"] = {"interval": "month"}
@@ -385,14 +418,24 @@ def register_routes(app: Flask):
             # ANTI-CONDIVISIONE: il codice è legato al primo dispositivo.
             device_id = get_or_make_device_id()
             if lic.device_id and lic.device_id != device_id:
+                # Registro la richiesta: comparirà un avviso nell'area creatore,
+                # e memorizzo questo dispositivo così un eventuale "Sblocca" lo
+                # autorizza direttamente (senza reinserire il codice).
+                lic.pending_device_id = device_id
+                lic.device_change_requested = True
+                db.session.commit()
                 flash(
-                    "Questo codice è già in uso su un altro dispositivo. Se sei "
-                    "tu, contatta l'assistenza per sbloccarlo.", "error",
+                    "Questo codice è già in uso su un altro dispositivo. Contatta "
+                    "l'assistenza per farti sbloccare l'accesso da qui.", "error",
                 )
-                return redirect(url_for("activate"))
+                # Salvo il cookie anche ora, così dopo lo sblocco entri da solo.
+                return set_device_cookie(redirect(url_for("activate")), device_id)
 
             if not lic.device_id:
                 lic.device_id = device_id  # primo dispositivo → lo lego qui
+            # Il dispositivo legittimo entra: annullo eventuali richieste pendenti.
+            lic.device_change_requested = False
+            lic.pending_device_id = None
             if not lic.activated:
                 lic.activated = True
                 lic.activated_at = datetime.utcnow()
@@ -491,7 +534,8 @@ def register_routes(app: Flask):
         influencers = {i.slot: i.name for i in inf_objs}
         # Nome + password (decifrata) per la tabella accessi influencer.
         inf_access = [
-            {"slot": i.slot, "name": i.name, "password": decrypt(i.password_enc)}
+            {"slot": i.slot, "name": i.name, "password": decrypt(i.password_enc),
+             "code": i.discount_code or "", "pct": i.discount_pct or 0}
             for i in inf_objs
         ]
         # Escludo gli account di servizio (creatore + anteprime influencer).
@@ -525,8 +569,33 @@ def register_routes(app: Flask):
             "price": get_plan(s.plan)["price_eur"], "paid": s.paid,
             "influencer": src_name(s),
             "device_bound": bool(s.device_id),
+            "device_request": bool(s.device_change_requested),
             "date": s.created_at.strftime("%d/%m/%Y") if s.created_at else "—",
         } for s in active]
+
+        # --- Statistiche più ricche ---
+        # Incassi per mese (ultimi 6 mesi) dagli abbonamenti pagati.
+        from collections import OrderedDict
+        months = OrderedDict()
+        today = datetime.utcnow().replace(day=1)
+        for k in range(5, -1, -1):
+            y = today.year + (today.month - 1 - k) // 12
+            mth = (today.month - 1 - k) % 12 + 1
+            months[f"{mth:02d}/{y}"] = 0.0
+        for s in active:
+            if s.paid and s.created_at:
+                label = s.created_at.strftime("%m/%Y")
+                if label in months:
+                    months[label] += get_plan(s.plan)["price_eur"]
+
+        # Incasso per piano.
+        rev_plan = {}
+        for s in active:
+            if s.paid:
+                nm = get_plan(s.plan)["name"]
+                rev_plan[nm] = rev_plan.get(nm, 0) + get_plan(s.plan)["price_eur"]
+
+        pending_devices = sum(1 for s in active if s.device_change_requested)
 
         return render_template(
             "admin.html",
@@ -534,9 +603,13 @@ def register_routes(app: Flask):
             plan=get_plan("lifetime"),
             revenue=revenue,
             active_count=len(active),
+            paid_count=sum(1 for s in active if s.paid),
+            pending_devices=pending_devices,
             per_plan={get_plan(p)["name"]: n for p, n in per_plan.items()},
             inf_access=inf_access,
             per_influencer=per_influencer,
+            revenue_by_month=dict(months),
+            revenue_by_plan=rev_plan,
             rows=rows,
         )
 
@@ -554,23 +627,34 @@ def register_routes(app: Flask):
             pw = (request.form.get(f"password_{slot}") or "").strip()
             if pw:
                 inf.password_enc = encrypt(pw)
+            inf.discount_code = (request.form.get(f"code_{slot}") or "").strip()[:60] or None
+            try:
+                inf.discount_pct = max(0.0, min(float(request.form.get(f"pct_{slot}", 0) or 0), 100.0))
+            except (ValueError, TypeError):
+                pass
         db.session.commit()
-        flash("Influencer aggiornati (nomi e password).", "success")
+        flash("Influencer aggiornati (nomi, password, codici sconto).", "success")
         return redirect(url_for("admin"))
 
     @app.route("/admin/reset-device", methods=["POST"])
     @admin_required
     def reset_device():
-        """Sblocca il dispositivo di un utente: potrà rientrare da uno nuovo.
-        Utile quando un cliente cambia telefono o cancella i cookie."""
+        """Sblocca l'accesso da un nuovo dispositivo. Se c'è una richiesta in
+        attesa, autorizza QUEL dispositivo (l'utente entrerà da solo); altrimenti
+        azzera il legame così potrà riattivare da zero."""
         try:
             lic = db.session.get(License, int(request.form.get("license_id", 0)))
         except (ValueError, TypeError):
             lic = None
         if lic:
-            lic.device_id = None
+            if lic.pending_device_id:
+                lic.device_id = lic.pending_device_id   # autorizzo il nuovo device
+                lic.pending_device_id = None
+            else:
+                lic.device_id = None
+            lic.device_change_requested = False
             db.session.commit()
-            flash(f"Dispositivo di {lic.email} sbloccato.", "success")
+            flash(f"Accesso di {lic.email} sbloccato dal nuovo dispositivo.", "success")
         return redirect(url_for("admin"))
 
     # ---------- Dashboard ----------
