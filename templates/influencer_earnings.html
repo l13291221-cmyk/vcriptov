@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}I miei guadagni — VCriptoV{% endblock %}
+{% block title %}{{ t('ie_title') }} — VCriptoV{% endblock %}
 {% block body_class %}app-body{% endblock %}
 {% block head %}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -12,43 +12,40 @@
   <main class="main">
     <div class="topbar">
       <div>
-        <h1>💸 I miei guadagni</h1>
-        <div class="hint">Ciao {{ payout.name }} · commissione concordata {{ payout.pct }}%{% if payout.collab_start %} · dal {{ payout.collab_start }}{% endif %}</div>
+        <h1>{{ t('ie_title') }}</h1>
+        <div class="hint">{{ t('ie_hi') }} {{ payout.name }} · {{ t('ie_agreed') }} {{ payout.pct }}%{% if payout.collab_start %} · {{ t('ie_since') }} {{ payout.collab_start }}{% endif %}</div>
       </div>
     </div>
 
     <div class="kpi-grid">
       <div class="kpi">
-        <div class="label">Guadagno questo mese</div>
+        <div class="label">{{ t('ie_this_month') }}</div>
         <div class="value pos">{{ "%.2f"|format(payout.owed_month) }}€</div>
-        <div class="sub">sugli abbonati ancora attivi</div>
+        <div class="sub">{{ t('ie_this_month_sub') }}</div>
       </div>
       <div class="kpi">
-        <div class="label">Guadagno totale (stima)</div>
+        <div class="label">{{ t('ie_total') }}</div>
         <div class="value">{{ "%.2f"|format(payout.owed_total) }}€</div>
-        <div class="sub">dall'inizio della collaborazione</div>
+        <div class="sub">{{ t('ie_total_sub') }}</div>
       </div>
       <div class="kpi">
-        <div class="label">Utenti attivi ora</div>
+        <div class="label">{{ t('ie_active') }}</div>
         <div class="value">{{ payout.users_active }}</div>
-        <div class="sub">Portati questo mese: {{ payout.users_month }}</div>
+        <div class="sub">{{ t('ie_active_sub') }}: {{ payout.users_month }}</div>
       </div>
       <div class="kpi">
-        <div class="label">Utenti portati in totale</div>
+        <div class="label">{{ t('ie_total_users') }}</div>
         <div class="value">{{ payout.users_total }}</div>
-        <div class="sub">da quando collabori</div>
+        <div class="sub">{{ t('ie_total_users_sub') }}</div>
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h2>Utenti portati per mese</h2></div>
+      <div class="panel-head"><h2>{{ t('ie_chart') }}</h2></div>
       <div class="chart-box"><canvas id="earnChart"></canvas></div>
     </div>
 
-    <div class="risk-banner">
-      ℹ️ I guadagni sono <b>stime</b> basate sugli abbonati attivi arrivati da te: se un
-      utente disdice, smette di contare. Il pagamento effettivo lo gestisce il creatore.
-    </div>
+    <div class="risk-banner">{{ t('ie_note')|safe }}</div>
   </main>
 </div>
 {% endblock %}

@@ -319,6 +319,38 @@ TRANSLATIONS = {
                 "en": "Which influencer told you about VCriptoV? Help us understand where you came from."},
     "ci_enter": {"it": "Entra nella dashboard →", "en": "Enter the dashboard →"},
 
+    # --- login influencer ---
+    "inf_login_title": {"it": "Accesso Influencer", "en": "Influencer login"},
+    "inf_login_lead": {"it": "Area riservata agli influencer per provare e registrare il sito. Inserisci il tuo nome e la password che ti è stata fornita.",
+                       "en": "Reserved area for influencers to try and record the site. Enter your name and the password you were given."},
+    "inf_your_name": {"it": "Il tuo nome", "en": "Your name"},
+    "inf_name_ph": {"it": "es. il nome del tuo account", "en": "e.g. your account name"},
+    "inf_password": {"it": "Password", "en": "Password"},
+    "inf_phone": {"it": "Numero di telefono", "en": "Phone number"},
+    "inf_phone_hint": {"it": "Obbligatorio. Serve per il recupero dell'accesso e viene registrato al primo accesso.",
+                       "en": "Required. Used to recover access and recorded at your first login."},
+    "inf_enter": {"it": "Entra →", "en": "Enter →"},
+    "inf_forgot": {"it": "<b>Password dimenticata?</b> Contatta il creatore/l'assistenza (assistenza.vcriptov@gmail.com): ti verrà reimpostata una nuova password.",
+                   "en": "<b>Forgot your password?</b> Contact the creator/support (assistenza.vcriptov@gmail.com): a new password will be set for you."},
+
+    # --- guadagni influencer ---
+    "ie_title": {"it": "💸 I miei guadagni", "en": "💸 My earnings"},
+    "ie_hi": {"it": "Ciao", "en": "Hi"},
+    "ie_agreed": {"it": "commissione concordata", "en": "agreed commission"},
+    "ie_since": {"it": "dal", "en": "since"},
+    "ie_this_month": {"it": "Guadagno questo mese", "en": "Earnings this month"},
+    "ie_this_month_sub": {"it": "sugli abbonati ancora attivi", "en": "on still-active subscribers"},
+    "ie_total": {"it": "Guadagno totale (stima)", "en": "Total earnings (estimate)"},
+    "ie_total_sub": {"it": "dall'inizio della collaborazione", "en": "since the start of the collaboration"},
+    "ie_active": {"it": "Utenti attivi ora", "en": "Active users now"},
+    "ie_active_sub": {"it": "Portati questo mese", "en": "Brought this month"},
+    "ie_total_users": {"it": "Utenti portati in totale", "en": "Total users brought"},
+    "ie_total_users_sub": {"it": "da quando collabori", "en": "since you started"},
+    "ie_chart": {"it": "Utenti portati per mese", "en": "Users brought per month"},
+    "ie_note": {"it": "ℹ️ I guadagni sono <b>stime</b> basate sugli abbonati attivi arrivati da te: se un utente disdice, smette di contare. Il pagamento effettivo lo gestisce il creatore.",
+                "en": "ℹ️ Earnings are <b>estimates</b> based on active subscribers who came from you: if a user cancels, they stop counting. The actual payment is handled by the creator."},
+    "ie_nav": {"it": "💸 I miei guadagni", "en": "💸 My earnings"},
+
     # --- scaduto ---
     "exp_title": {"it": "Abbonamento scaduto", "en": "Subscription expired"},
     "exp_lead_1": {"it": "Il tuo abbonamento", "en": "Your"},

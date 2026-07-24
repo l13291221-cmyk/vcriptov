@@ -1,39 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Accesso Influencer — VCriptoV{% endblock %}
+{% block title %}{{ t('inf_login_title') }} — VCriptoV{% endblock %}
 
 {% block content %}
 <div class="auth-card">
   <div class="brand-row">
     <div class="brand-logo">📣</div>
-    <div class="brand-name">Accesso Influencer</div>
+    <div class="brand-name">{{ t('inf_login_title') }}</div>
   </div>
-  <p class="lead">Area riservata agli influencer per provare e registrare il
-  sito. Inserisci il tuo nome e la password che ti è stata fornita.</p>
+  <p class="lead">{{ t('inf_login_lead') }}</p>
 
   <form method="POST" action="{{ url_for('influencer_login') }}">
     <div class="field">
-      <label>Il tuo nome</label>
-      <input type="text" name="name" placeholder="es. il nome del tuo account" autocomplete="off" required autofocus />
+      <label>{{ t('inf_your_name') }}</label>
+      <input type="text" name="name" placeholder="{{ t('inf_name_ph') }}" autocomplete="off" required autofocus />
     </div>
     <div class="field">
-      <label>Password</label>
+      <label>{{ t('inf_password') }}</label>
       <input type="password" name="password" autocomplete="off" required />
     </div>
     <div class="field">
-      <label>Numero di telefono</label>
+      <label>{{ t('inf_phone') }}</label>
       <input type="tel" name="phone" placeholder="es. +39 333 1234567" autocomplete="off" required />
-      <div class="hint">Obbligatorio. Serve per il recupero dell'accesso e viene registrato al primo accesso.</div>
+      <div class="hint">{{ t('inf_phone_hint') }}</div>
     </div>
-    <button type="submit" class="btn btn-primary btn-block">Entra →</button>
+    <button type="submit" class="btn btn-primary btn-block">{{ t('inf_enter') }}</button>
   </form>
 
   <div class="disclaimer" style="margin-top:16px;">
-    <b>Password dimenticata?</b> Contatta il creatore/l'assistenza
-    (assistenza.vcriptov@gmail.com): ti verrà reimpostata una nuova password.
+    {{ t('inf_forgot')|safe }}
   </div>
 
   <p class="hint" style="margin-top:14px;text-align:center;">
-    <a href="{{ url_for('index') }}">← Torna al sito</a>
+    <a href="{{ url_for('index') }}">{{ t('back_to_site') }}</a>
   </p>
 </div>
 {% endblock %}
