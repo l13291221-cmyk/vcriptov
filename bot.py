@@ -76,14 +76,101 @@ class TradingEngine:
             self._check_price_alerts(lic, prices)
             self._maybe_expiry_reminder(lic)
             self._maybe_weekly_summary(lic)
+            self._maybe_monthly_report(lic)
 
         db.session.commit()
         self.last_tick = datetime.utcnow()
         self.tick_count += 1
+        self._maybe_backup()
+
+    def _maybe_monthly_report(self, lic):
+        """Una volta al mese manda per email il resoconto personale: quanto ha
+        reso il bot con i segnali (guadagno stimato) e quante perdite ha evitato
+        il guardiano avvisando in tempo."""
+        if not lic.email or lic.email.endswith("@vcriptov.local"):
+            return
+        now = datetime.utcnow()
+        this_month = now.strftime("%Y-%m")
+        if lic.last_report_month is None:
+            lic.last_report_month = this_month  # primo giro: parte dal mese dopo
+            return
+        if lic.last_report_month == this_month:
+            return
+
+        month_ago = now - timedelta(days=31)
+        sigs = Signal.query.filter(
+            Signal.license_id == lic.id, Signal.created_at >= month_ago,
+            Signal.outcome.isnot(None),
+        ).all()
+        gain = 0.0
+        saved = 0.0
+        wins = losses = 0
+        for s in sigs:
+            base = s.max_order_eur or 20.0
+            if s.outcome == "win":
+                gain += base * (s.take_profit_pct or 0) / 100.0
+                wins += 1
+            else:
+                loss = base * (s.stop_loss_pct or 0) / 100.0
+                gain -= loss
+                losses += 1
+                # "Risparmio": se il guardiano aveva avvisato di uscire, conta la
+                # perdita che l'utente poteva evitare dando retta all'avviso.
+                if s.warn_loss_sent:
+                    saved += loss
+
+        lic.last_report_month = this_month
+        if not sigs:
+            return  # niente attività questo mese: niente email inutile
+
+        wr = round(wins / len(sigs) * 100) if sigs else 0
+        body = (
+            f"Ciao,\n\nEcco il tuo resoconto mensile VCriptoV.\n\n"
+            f"Segnali chiusi nel mese: {len(sigs)}\n"
+            f"A target: {wins}   In perdita: {losses}   (successo {wr}%)\n"
+            f"Guadagno stimato dai segnali: {gain:+.2f}€\n"
+            f"Perdite che potevi evitare dando retta agli avvisi del guardiano: ~{saved:.2f}€\n\n"
+            f"Ricorda: sono stime basate sui segnali, non profitti garantiti. "
+            f"Decidi sempre tu ogni investimento.\n\n"
+            f"— Il team VCriptoV"
+        )
+        send_email(lic.email, "VCriptoV — Il tuo resoconto mensile", body)
+
+    def _maybe_backup(self):
+        """Backup automatico del database SQLite, una volta al giorno, tenendo
+        gli ultimi 7 file. Su database esterni (Postgres) non fa nulla."""
+        import os
+        import shutil
+        from config import INSTANCE_DIR
+
+        db_file = INSTANCE_DIR / "vcriptov.db"
+        if not db_file.exists():
+            return  # DB esterno (Postgres) o non ancora creato
+        now = datetime.utcnow()
+        last = getattr(self, "_last_backup_day", None)
+        if last == now.date():
+            return
+        self._last_backup_day = now.date()
+        backup_dir = INSTANCE_DIR / "backups"
+        try:
+            backup_dir.mkdir(exist_ok=True)
+            dest = backup_dir / f"vcriptov-{now:%Y%m%d}.db"
+            shutil.copy2(db_file, dest)
+            # Tieni solo gli ultimi 7 backup.
+            files = sorted(backup_dir.glob("vcriptov-*.db"))
+            for old in files[:-7]:
+                try:
+                    os.remove(old)
+                except OSError:
+                    pass
+        except Exception as exc:
+            self.app.logger.warning("Backup DB non riuscito: %s", exc)
 
     def _update_signal_outcomes(self, lic, prices):
         """Track record: segna se un segnale ha raggiunto il take profit (win) o
-        lo stop loss (loss). Serve per la percentuale di successo."""
+        lo stop loss (loss). Se la posizione era stata investita davvero
+        ('executed'), manda anche il RIEPILOGO del guardiano su Telegram con il
+        risultato finale (+X% / −Y%)."""
         open_sigs = Signal.query.filter(
             Signal.license_id == lic.id, Signal.outcome.is_(None)
         ).all()
@@ -97,6 +184,30 @@ class TradingEngine:
                 sig.outcome = "win"
             elif price <= sl:
                 sig.outcome = "loss"
+            else:
+                continue
+            # Riepilogo di chiusura, solo per gli investimenti reali.
+            if sig.status == "executed":
+                self._send_close_summary(lic, sig, price)
+
+    def _send_close_summary(self, lic, sig, price):
+        settings = lic.settings
+        if not (settings and self._telegram_ready(lic, settings)):
+            return
+        change = (price / sig.ref_price - 1.0) * 100.0 if sig.ref_price else 0.0
+        coin = sig.symbol.replace("/USDT", "")
+        if sig.outcome == "win":
+            head = f"✅ <b>Chiusa in guadagno su {coin}</b>"
+        else:
+            head = f"🔻 <b>Chiusa in perdita su {coin}</b>"
+        send_telegram(
+            decrypt(settings.telegram_token_enc), settings.telegram_chat_id,
+            f"{head}\n"
+            f"Risultato finale: <b>{change:+.1f}%</b>\n"
+            f"(ingresso ~{sig.ref_price:,.4f} → uscita ~{price:,.4f})\n\n"
+            f"⚠️ <i>Controlla la posizione anche sul tuo exchange. Non è "
+            f"consulenza finanziaria.</i>",
+        )
 
     def _monitor_open_investments(self, lic, prices):
         """GUARDIANO DELLA POSIZIONE. Dopo che l'utente tocca "Investi" e l'ordine
@@ -232,6 +343,17 @@ class TradingEngine:
         if not (settings and self._telegram_ready(lic, settings)):
             return
 
+        # FOCUS: se l'utente ha un investimento aperto (ha toccato "Investi" e
+        # l'ordine è partito), il bot si concentra SOLO su quello — niente nuovi
+        # segnali su altre cripto finché quella posizione non si chiude.
+        open_invest = (
+            Signal.query.filter_by(license_id=lic.id, status="executed")
+            .filter(Signal.outcome.is_(None))
+            .first()
+        )
+        if open_invest:
+            return
+
         fast = settings.fast_ma or 5
         slow = settings.slow_ma or 20
         # Solo le crypto scelte dall'utente (vuoto = tutte quelle del piano).
@@ -242,6 +364,31 @@ class TradingEngine:
         for symbol in symbols:
             if prices.get(symbol):
                 self._maybe_send_signal(lic, settings, symbol, prices[symbol], fast, slow)
+
+    # ---- filtro qualità mercato (meno segnali, ma migliori) ------------
+    def _recent_volatility(self, symbol) -> float | None:
+        """Ampiezza percentuale del prezzo negli ultimi minuti. Serve a scartare
+        i mercati fermi (piatti) e quelli troppo nervosi."""
+        h = market.history(symbol)
+        if len(h) < 6:
+            return None
+        window = h[-12:]
+        mean = sum(window) / len(window)
+        if mean <= 0:
+            return None
+        return (max(window) - min(window)) / mean * 100.0
+
+    def _market_is_good(self, symbol) -> bool:
+        vol = self._recent_volatility(symbol)
+        if vol is None:
+            return True  # storia insufficiente: non blocco
+        # Mercato PIATTO (fermo) o troppo NERVOSO → niente segnale.
+        return 0.5 <= vol <= 10.0
+
+    def _is_quiet_hours(self) -> bool:
+        """Ore notturne a bassa liquidità (circa 01:00–06:00 in Italia): meglio
+        non mandare segnali, i movimenti sono spesso falsi."""
+        return 0 <= datetime.utcnow().hour < 5
 
     # ---- modalità reale: generazione segnali interattivi ---------------
     def _telegram_ready(self, lic, settings) -> bool:
@@ -255,6 +402,11 @@ class TradingEngine:
         if sma_fast is None or sma_slow is None:
             return
         if sma_fast <= sma_slow:   # segnale d'acquisto solo con momentum rialzista
+            return
+
+        # Meno segnali ma migliori: salta i mercati fermi o troppo nervosi e le
+        # ore notturne a bassa liquidità.
+        if self._is_quiet_hours() or not self._market_is_good(symbol):
             return
 
         # Anti-spam: niente nuovo segnale se ce n'è già uno recente per questo simbolo.

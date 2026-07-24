@@ -13,6 +13,9 @@
     <a href="{{ url_for('settings_view') }}" class="nav-link {% if request.endpoint == 'settings_view' %}active{% endif %}">
       ⚙️ Impostazioni
     </a>
+    <a href="{{ url_for('leaderboard') }}" class="nav-link {% if request.endpoint == 'leaderboard' %}active{% endif %}">
+      🏆 Classifica
+    </a>
     {% if is_admin %}
     <a href="{{ url_for('admin') }}" class="nav-link {% if request.endpoint == 'admin' %}active{% endif %}">
       👑 Amministrazione

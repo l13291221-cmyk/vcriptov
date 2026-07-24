@@ -34,6 +34,7 @@ class License(db.Model):
     recovery_phone = db.Column(db.String(40), nullable=True)        # telefono per recupero (influencer)
     expiry_reminder_sent = db.Column(db.Boolean, default=False)     # promemoria scadenza già inviato
     last_summary_at = db.Column(db.DateTime, nullable=True)         # ultimo riepilogo settimanale inviato
+    last_report_month = db.Column(db.String(7), nullable=True)      # "YYYY-MM" dell'ultimo report email mensile
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     activated_at = db.Column(db.DateTime, nullable=True)
 

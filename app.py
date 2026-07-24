@@ -106,6 +106,7 @@ def ensure_schema():
         "expiry_reminder_sent": "BOOLEAN DEFAULT 0",
         "last_summary_at": "DATETIME",
         "banned": "BOOLEAN DEFAULT 0",
+        "last_report_month": "VARCHAR(7)",
     }
     try:
         with db.engine.begin() as conn:
@@ -1369,6 +1370,51 @@ def register_routes(app: Flask):
             db.session.delete(a)
             db.session.commit()
         return jsonify({"ok": True})
+
+    @app.route("/classifica")
+    @login_required
+    def leaderboard():
+        """Classifica ANONIMA dei 10 utenti che hanno guadagnato di più con i
+        segnali del bot. Guadagno = stima dai segnali chiusi (win: +take profit,
+        loss: -stop loss). Mostra con quale cripto e con che metodo (rischio)."""
+        from collections import defaultdict
+        earn = defaultdict(lambda: defaultdict(float))
+        for s in Signal.query.filter(Signal.outcome.isnot(None)).all():
+            base = s.max_order_eur or 20.0
+            g = base * (s.take_profit_pct or 0) / 100.0 if s.outcome == "win" \
+                else -base * (s.stop_loss_pct or 0) / 100.0
+            earn[s.license_id][s.symbol.replace("/USDT", "")] += g
+
+        lics = {
+            l.id: l for l in
+            License.query.filter_by(active=True, activated=True, banned=False).all()
+        }
+        risk_label = {"prudente": "Rischio basso", "bilanciata": "Rischio medio",
+                      "aggressiva": "Rischio alto"}
+        rows = []
+        for lic_id, coins in earn.items():
+            lic = lics.get(lic_id)
+            if not lic or lic.email.endswith("@vcriptov.local"):
+                continue
+            total = sum(coins.values())
+            if total <= 0:
+                continue
+            top = max(coins.items(), key=lambda x: x[1])[0]
+            strat = (lic.settings.strategy if lic.settings else None) or "bilanciata"
+            rows.append({
+                # Etichetta anonima ma stabile per utente (nessun dato personale).
+                "name": f"Utente {1000 + (lic_id * 37) % 9000}",
+                "gain": round(total, 2),
+                "coin": top,
+                "risk": risk_label.get(strat, "Rischio medio"),
+            })
+        rows.sort(key=lambda x: x["gain"], reverse=True)
+        return render_template(
+            "classifica.html",
+            rows=rows[:10],
+            plan=get_plan(current_license().plan),
+            license=current_license(),
+        )
 
     @app.errorhandler(404)
     def not_found(e):

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Classifica — VCriptoV{% endblock %}
+{% block body_class %}app-body{% endblock %}
+
+{% block content %}
+<div class="app">
+  {% include "_sidebar.html" %}
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1>🏆 Classifica utenti</h1>
+        <div class="hint">I 10 utenti che hanno guadagnato di più con i segnali del bot</div>
+      </div>
+    </div>
+
+    <div class="risk-banner">
+      🔒 <b>Tutto anonimo.</b> Non mostriamo mai nomi, email o dati personali di nessuno.
+      I guadagni sono <b>stime basate sui segnali</b> del bot (a target / stop), non profitti
+      garantiti: i risultati passati non assicurano quelli futuri.
+    </div>
+
+    <div class="panel">
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Utente</th><th>Guadagno stimato</th><th>Con quale cripto</th><th>Metodo (rischio)</th></tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>
+                {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
+              </td>
+              <td><b>{{ r.name }}</b></td>
+              <td><b class="pos">{{ "%.2f"|format(r.gain) }}€</b></td>
+              <td>{{ r.coin }}</td>
+              <td><span class="tag tag-pending">{{ r.risk }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="empty">Ancora nessun guadagno da mostrare: la classifica si riempirà man mano che i segnali del bot vengono chiusi.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
