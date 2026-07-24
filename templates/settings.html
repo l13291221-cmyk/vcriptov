@@ -187,6 +187,26 @@
 
       <button type="submit" class="btn btn-primary">💾 Salva impostazioni</button>
     </form>
+
+    <div class="panel">
+      <h2>💳 Abbonamento</h2>
+      {% if plan.lifetime %}
+        <p class="hint">Hai il piano <b>Lifetime</b>: pagamento unico, nessun rinnovo. L'accesso non scade.</p>
+      {% elif license.stripe_subscription_id %}
+        <p class="hint">
+          Il tuo abbonamento si <b>rinnova automaticamente ogni mese</b>{% if license.expires_at %},
+          prossimo rinnovo intorno al <b>{{ license.expires_at.strftime('%d/%m/%Y') }}</b>{% endif %}.
+          Puoi disdire quando vuoi: <b>mantieni l'accesso fino alla scadenza</b> già pagata e poi
+          non ti verrà più addebitato nulla.
+        </p>
+        <form method="POST" action="{{ url_for('cancel_subscription_user') }}"
+              onsubmit="return confirm('Vuoi davvero disdire il rinnovo automatico? Manterrai l&#39;accesso fino alla scadenza.');">
+          <button type="submit" class="btn" style="background:var(--red);color:#fff;">Disdici il rinnovo automatico</button>
+        </form>
+      {% else %}
+        <p class="hint">Su questo account non risulta un rinnovo automatico attivo (es. accesso demo o codice).</p>
+      {% endif %}
+    </div>
   </main>
 </div>
 {% endblock %}

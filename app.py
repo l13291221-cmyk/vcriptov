@@ -522,6 +522,27 @@ def register_routes(app: Flask):
             license_key=lic.key,
         )
 
+    @app.route("/disdici", methods=["POST"])
+    @login_required
+    def cancel_subscription_user():
+        """L'utente disdice il RINNOVO automatico. Con cancel_at_period_end
+        mantiene l'accesso fino alla fine del periodo già pagato; alla scadenza
+        Stripe manda 'customer.subscription.deleted' e l'accesso si blocca."""
+        lic = current_license()
+        if not lic.stripe_subscription_id:
+            flash("Nessun rinnovo automatico attivo da disdire su questo account.", "error")
+            return redirect(url_for("settings_view"))
+        try:
+            stripe.Subscription.modify(lic.stripe_subscription_id, cancel_at_period_end=True)
+            flash(
+                "Rinnovo automatico disdetto. Manterrai l'accesso fino alla "
+                "scadenza già pagata, poi non verrà più addebitato nulla.", "success",
+            )
+        except Exception as exc:  # noqa: BLE001
+            app.logger.error("Errore disdetta Stripe: %s", exc)
+            flash("Non è stato possibile disdire adesso. Riprova o scrivi all'assistenza.", "error")
+        return redirect(url_for("settings_view"))
+
     @app.route("/checkout/cancel")
     def checkout_cancel():
         flash("Pagamento annullato. Puoi riprovare quando vuoi.", "error")
