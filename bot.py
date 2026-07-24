@@ -386,9 +386,16 @@ class TradingEngine:
         return 0.5 <= vol <= 10.0
 
     def _is_quiet_hours(self) -> bool:
-        """Ore notturne a bassa liquidità (circa 01:00–06:00 in Italia): meglio
-        non mandare segnali, i movimenti sono spesso falsi."""
-        return 0 <= datetime.utcnow().hour < 5
+        """Ore notturne a bassa liquidità in ITALIA (01:00–06:00), quando i
+        movimenti sono spesso falsi: meglio non mandare segnali. Usa il vero fuso
+        orario italiano, con l'ora legale che cambia da sola. Se il sistema non
+        ha i dati dei fusi, ripiega su un'approssimazione (UTC+1)."""
+        try:
+            from zoneinfo import ZoneInfo
+            hour = datetime.now(ZoneInfo("Europe/Rome")).hour
+        except Exception:
+            hour = (datetime.utcnow().hour + 1) % 24  # CET approssimato
+        return 1 <= hour < 6
 
     # ---- modalità reale: generazione segnali interattivi ---------------
     def _telegram_ready(self, lic, settings) -> bool:

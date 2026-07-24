@@ -8,6 +8,9 @@ ccxt==4.5.67
 # con ccxt: lasciamo che pip scelga quella compatibile per tutti.
 cryptography>=43
 requests>=2.32
+# Dati dei fusi orari: servono al filtro anti-notte (ora italiana con ora legale)
+# su server che non hanno i fusi di sistema.
+tzdata>=2024.1
 # Server di produzione (usato solo quando pubblichi online, es. su Render).
 # In locale non serve: continui ad avviare con start.bat.
 gunicorn>=21
