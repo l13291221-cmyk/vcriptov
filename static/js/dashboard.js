@@ -26,25 +26,6 @@
   });
   const equitySeries = [];  // andamento reale accumulato nella sessione
 
-  // ----- Grafico community (guadagno stimato per cripto, anonimo) -----
-  let communityChart = null;
-  function initCommunityChart() {
-    const cv = document.getElementById("communityChart");
-    if (!cv || communityChart) return;
-    communityChart = new Chart(cv.getContext("2d"), {
-      type: "bar",
-      data: { labels: [], datasets: [{ label: "Guadagno stimato ($)", data: [], backgroundColor: [] }] },
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: "#8a97b1" }, grid: { display: false } },
-          y: { ticks: { color: "#8a97b1" }, grid: { color: "rgba(37,48,73,.5)" } },
-        },
-      },
-    });
-  }
-
   async function getJSON(url) {
     const r = await fetch(url);
     if (!r.ok) throw new Error(url + " -> " + r.status);
@@ -268,37 +249,6 @@
     el.textContent = `Track record: ${d.win_rate}% a target (${d.wins}/${d.total})`;
   }
 
-  async function refreshCommunity() {
-    const panel = document.getElementById("communityPanel");
-    if (!panel) return;
-    let d;
-    try { d = await getJSON("/api/community"); } catch (e) { return; }
-    if (!d.enough) { panel.style.display = "none"; return; }  // pochi dati → non mostriamo nulla
-    panel.style.display = "block";
-    initCommunityChart();
-    const coins = d.top || [];
-    if (communityChart) {
-      communityChart.data.labels = coins.map((c) => c.coin);
-      communityChart.data.datasets[0].data = coins.map((c) => c.gain);
-      communityChart.data.datasets[0].backgroundColor = coins.map((c) => (c.gain >= 0 ? "#22c98a" : "#ff5d6c"));
-      communityChart.update("none");
-    }
-    const seg = document.getElementById("communitySummary");
-    if (seg) seg.textContent = `${d.total_signals} segnali · ${d.win_rate}% a target`;
-    const totTxt = eur(d.total_gain);
-    const best = coins.filter((c) => c.gain > 0).slice(0, 3).map((c) => c.coin).join(", ");
-    const el = document.getElementById("communityCoins");
-    if (el) {
-      el.innerHTML = `
-        <div class="community-row"><span>Guadagno stimato totale (tutti gli utenti)</span>
-          <b class="${cls(d.total_gain)}">${totTxt}</b></div>
-        ${best ? `<div class="community-row"><span>Cripto che rendono di più</span><b>${best}</b></div>` : ""}
-        ` + coins.map((c) => `<div class="community-row community-sub">
-          <span>${c.coin} · ${c.signals} segnali · ${c.win_rate}% a target</span>
-          <b class="${cls(c.gain)}">${eur(c.gain)}</b></div>`).join("");
-    }
-  }
-
   const alAddBtn = document.getElementById("alAdd");
   if (alAddBtn) alAddBtn.addEventListener("click", addAlert);
 
@@ -312,7 +262,6 @@
     renderSignals();
     refreshAlerts();
     refreshTrack();
-    refreshCommunity();
     // Conto Kraken: può essere più lento → aggiornato appena pronto, a parte.
     getJSON("/api/account").then((acc) => { lastAccount = acc; applyAccount(acc); })
       .catch(() => {});

@@ -105,6 +105,7 @@ def ensure_schema():
         "recovery_phone": "VARCHAR(40)",
         "expiry_reminder_sent": "BOOLEAN DEFAULT 0",
         "last_summary_at": "DATETIME",
+        "banned": "BOOLEAN DEFAULT 0",
     }
     try:
         with db.engine.begin() as conn:
@@ -251,7 +252,7 @@ def login_required(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
         lic = current_license()
-        if not lic or not lic.active or not lic.activated:
+        if not lic or not lic.active or not lic.activated or lic.banned:
             session.clear()
             return redirect(url_for("index"))
         ep = request.endpoint
@@ -337,7 +338,7 @@ def register_routes(app: Flask):
         did = request.cookies.get(DEVICE_COOKIE)
         if did and not request.cookies.get(LOGOUT_COOKIE):
             lic = (
-                License.query.filter_by(device_id=did, active=True, activated=True)
+                License.query.filter_by(device_id=did, active=True, activated=True, banned=False)
                 .order_by(License.activated_at.desc())
                 .first()
             )
@@ -608,6 +609,10 @@ def register_routes(app: Flask):
                 flash("Codice di attivazione non valido o disattivato.", "error")
                 return redirect(url_for("activate"))
 
+            if lic.banned:
+                flash("Questo account è stato bloccato. Contatta l'assistenza.", "error")
+                return redirect(url_for("activate"))
+
             # Doppio controllo: il checksum deve combaciare con email+piano.
             if not verify_checksum(lic.email, lic.plan, key):
                 flash("Codice di attivazione corrotto.", "error")
@@ -840,6 +845,62 @@ def register_routes(app: Flask):
         valid = [s for s in active if not is_expired(s)]
         revenue = sum(get_plan(s.plan)["price_eur"] for s in valid if s.paid)
 
+        # --- Guadagni STIMATI per utente dai segnali del bot (solo esiti reali) ---
+        # Per ogni segnale risolto: +take_profit se a target (win), -stop_loss se in
+        # perdita (loss), sull'importo del segnale. È una STIMA sui segnali.
+        from collections import defaultdict
+        earn = defaultdict(lambda: defaultdict(float))   # lic_id -> coin -> guadagno
+        earn_sig = defaultdict(lambda: defaultdict(int))  # lic_id -> coin -> n. segnali
+        for s in Signal.query.filter(Signal.outcome.isnot(None)).all():
+            base = s.max_order_eur or 20.0
+            g = base * (s.take_profit_pct or 0) / 100.0 if s.outcome == "win" \
+                else -base * (s.stop_loss_pct or 0) / 100.0
+            coin = s.symbol.replace("/USDT", "")
+            earn[s.license_id][coin] += g
+            earn_sig[s.license_id][coin] += 1
+
+        # "Sta investendo ora": cripto con segnali eseguiti o in attesa negli ultimi 30gg.
+        recent_cut = datetime.utcnow() - timedelta(days=30)
+        investing = defaultdict(set)
+        for s in Signal.query.filter(
+            Signal.status.in_(("executed", "pending")), Signal.created_at >= recent_cut
+        ).all():
+            investing[s.license_id].add(s.symbol.replace("/USDT", ""))
+
+        def user_earn_summary(lic_id):
+            coins = earn.get(lic_id, {})
+            total = round(sum(coins.values()), 2)
+            ordered = sorted(coins.items(), key=lambda x: x[1], reverse=True)
+            top_coin = ordered[0][0] if ordered and ordered[0][1] > 0 else None
+            return total, top_coin, ordered
+
+        # Dettaglio per il popup (⋮): andamento della persona.
+        user_details = {}
+        for s in active:
+            total, top_coin, ordered = user_earn_summary(s.id)
+            user_details[s.id] = {
+                "email": s.email,
+                "total": total,
+                "top_coin": top_coin,
+                "coins": [
+                    {"coin": c, "gain": round(g, 2), "signals": earn_sig[s.id].get(c, 0)}
+                    for c, g in ordered
+                ],
+                "investing": sorted(investing.get(s.id, [])),
+            }
+
+        # --- Grafico Amministrazione: guadagno MEDIO per utente, per cripto ---
+        n_users = len(active) or 1
+        coin_totals = defaultdict(float)
+        for cmap in earn.values():
+            for c, g in cmap.items():
+                coin_totals[c] += g
+        avg_by_coin = {
+            c: round(v / n_users, 2)
+            for c, v in sorted(coin_totals.items(), key=lambda x: x[1], reverse=True)[:8]
+        }
+        avg_earn_per_user = round(sum(coin_totals.values()) / n_users, 2)
+
         def src_name(s):
             # Nome fotografato all'iscrizione; fallback allo slot per dati vecchi.
             return s.influencer_name or influencers.get(s.influencer_slot) or "—"
@@ -854,16 +915,23 @@ def register_routes(app: Flask):
             if s.influencer_name in per_influencer:
                 per_influencer[s.influencer_name] += 1
 
-        rows = [{
-            "id": s.id, "email": s.email, "plan": get_plan(s.plan)["name"],
-            "price": get_plan(s.plan)["price_eur"], "paid": s.paid,
-            "influencer": src_name(s),
-            "device_bound": bool(s.device_id),
-            "device_request": bool(s.device_change_requested),
-            "expires": s.expires_at.strftime("%d/%m/%Y") if s.expires_at else "mai",
-            "expired": is_expired(s),
-            "date": s.created_at.strftime("%d/%m/%Y") if s.created_at else "—",
-        } for s in active]
+        rows = []
+        for s in active:
+            e_total, e_top, _ = user_earn_summary(s.id)
+            rows.append({
+                "id": s.id, "email": s.email, "plan": get_plan(s.plan)["name"],
+                "price": get_plan(s.plan)["price_eur"], "paid": s.paid,
+                "influencer": src_name(s),
+                "device_bound": bool(s.device_id),
+                "device_request": bool(s.device_change_requested),
+                "expires": s.expires_at.strftime("%d/%m/%Y") if s.expires_at else "mai",
+                "expired": is_expired(s),
+                "date": s.created_at.strftime("%d/%m/%Y") if s.created_at else "—",
+                "earn": e_total,
+                "earn_coin": e_top,
+                "investing": sorted(investing.get(s.id, [])),
+                "banned": bool(s.banned),
+            })
 
         # --- Statistiche più ricche ---
         # Incassi per mese (ultimi 6 mesi) dagli abbonamenti pagati.
@@ -903,6 +971,9 @@ def register_routes(app: Flask):
             revenue_by_month=dict(months),
             revenue_by_plan=rev_plan,
             rows=rows,
+            avg_by_coin=avg_by_coin,
+            avg_earn_per_user=avg_earn_per_user,
+            user_details=user_details,
         )
 
     @app.route("/admin/save-influencers", methods=["POST"])
@@ -963,6 +1034,24 @@ def register_routes(app: Flask):
             lic.expiry_reminder_sent = False
             db.session.commit()
             flash(f"Abbonamento di {lic.email} esteso di 30 giorni.", "success")
+        return redirect(url_for("admin"))
+
+    @app.route("/admin/ban", methods=["POST"])
+    @admin_required
+    def ban_user():
+        """Banna (o sbanna) un utente dal sito, per sicurezza. Un utente bannato
+        non può più entrare né riattivare il codice, finché non lo sbanni."""
+        try:
+            lic = db.session.get(License, int(request.form.get("license_id", 0)))
+        except (ValueError, TypeError):
+            lic = None
+        if lic and lic.email != CREATOR_EMAIL:  # non bannare mai l'account creatore
+            lic.banned = not lic.banned
+            db.session.commit()
+            if lic.banned:
+                flash(f"Utente {lic.email} BANNATO dal sito.", "success")
+            else:
+                flash(f"Utente {lic.email} riammesso.", "success")
         return redirect(url_for("admin"))
 
     # ---------- Dashboard ----------
@@ -1275,62 +1364,6 @@ def register_routes(app: Flask):
             db.session.delete(a)
             db.session.commit()
         return jsonify({"ok": True})
-
-    @app.route("/api/community")
-    @login_required
-    def api_community():
-        """Andamento AGGREGATO e ANONIMO dei segnali di tutti gli utenti.
-
-        Onesto: NON inventiamo numeri. Usiamo solo i segnali reali già risolti
-        (outcome win/loss) di TUTTI gli iscritti. Il "guadagno stimato" per ogni
-        cripto è la somma di: +take_profit se il segnale ha centrato l'obiettivo,
-        -stop_loss se è andato in perdita, calcolata sull'importo del segnale.
-        È una STIMA basata sui segnali, non un profitto garantito. Se ci sono
-        pochi dati, restituiamo enough=False e in dashboard non mostriamo nulla
-        di fuorviante.
-        """
-        done = Signal.query.filter(Signal.outcome.isnot(None)).all()
-        MIN_SIGNALS = 8  # sotto questa soglia i dati non sono significativi
-        if len(done) < MIN_SIGNALS:
-            return jsonify({"enough": False, "total_signals": len(done)})
-
-        by_symbol = {}
-        wins = 0
-        for s in done:
-            base = s.max_order_eur or 20.0
-            if s.outcome == "win":
-                gain = base * (s.take_profit_pct or 0) / 100.0
-                wins += 1
-            else:
-                gain = -base * (s.stop_loss_pct or 0) / 100.0
-            d = by_symbol.setdefault(s.symbol, {"gain": 0.0, "n": 0, "wins": 0})
-            d["gain"] += gain
-            d["n"] += 1
-            if s.outcome == "win":
-                d["wins"] += 1
-
-        coins = sorted(
-            (
-                {
-                    "symbol": sym,
-                    "coin": sym.replace("/USDT", ""),
-                    "gain": round(v["gain"], 2),
-                    "signals": v["n"],
-                    "win_rate": round(v["wins"] / v["n"] * 100, 1) if v["n"] else 0,
-                }
-                for sym, v in by_symbol.items()
-            ),
-            key=lambda x: x["gain"],
-            reverse=True,
-        )
-        return jsonify({
-            "enough": True,
-            "total_signals": len(done),
-            "total_gain": round(sum(c["gain"] for c in coins), 2),
-            "win_rate": round(wins / len(done) * 100, 1),
-            "users": License.query.filter_by(active=True, activated=True).count(),
-            "top": coins[:6],
-        })
 
     @app.errorhandler(404)
     def not_found(e):

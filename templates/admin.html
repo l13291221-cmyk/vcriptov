@@ -54,6 +54,19 @@
     </div>
 
     <div class="panel">
+      <div class="panel-head">
+        <h2>📊 Guadagno medio degli utenti (dai segnali del bot)</h2>
+        <span class="hint">Media per utente: <b class="{% if avg_earn_per_user >= 0 %}pos{% else %}neg{% endif %}">{{ "%.2f"|format(avg_earn_per_user) }}€</b></span>
+      </div>
+      <p class="hint" style="margin-top:-6px;">
+        Guadagno medio stimato per utente, cripto per cripto. Calcolato sui segnali
+        realmente chiusi (a target = +take profit, in perdita = −stop loss).
+        È una <b>stima sui segnali</b>, non un profitto garantito.
+      </p>
+      <div class="chart-box"><canvas id="earnChart"></canvas></div>
+    </div>
+
+    <div class="panel">
       <div class="panel-head"><h2>Influencer: accessi e codici sconto</h2></div>
       <p class="hint">Per ogni influencer: <b>nome</b> e <b>password</b> (per entrare da “📣 Influencer”),
       più un <b>codice sconto</b> e la <b>percentuale</b>. Chi usa quel codice al pagamento ottiene lo
@@ -83,11 +96,20 @@
       <div class="panel-head"><h2>Abbonamenti attivi e provenienza</h2></div>
       <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Utente</th><th>Piano</th><th>Prezzo</th><th>Pagato</th><th>Arriva da</th><th>Scadenza</th><th>Dispositivo</th></tr></thead>
+          <thead><tr><th>Utente</th><th>Guadagno (dai segnali)</th><th>Piano</th><th>Prezzo</th><th>Pagato</th><th>Arriva da</th><th>Scadenza</th><th>Dispositivo</th><th>Azioni</th></tr></thead>
           <tbody>
             {% for r in rows %}
-            <tr>
-              <td>{{ r.email }}</td>
+            <tr {% if r.banned %}style="opacity:.55;"{% endif %}>
+              <td>
+                <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;" title="Vedi andamento" onclick="openDetail({{ r.id }})">⋮</button>
+                {{ r.email }}
+                {% if r.banned %}<span class="tag tag-closed">bannato</span>{% endif %}
+              </td>
+              <td>
+                <b class="{% if r.earn >= 0 %}pos{% else %}neg{% endif %}">{{ "%.2f"|format(r.earn) }}€</b>
+                {% if r.earn_coin %}<div class="hint">di più con {{ r.earn_coin }}</div>{% endif %}
+                {% if r.investing %}<div class="hint">ora su: {{ r.investing|join(', ') }}</div>{% endif %}
+              </td>
               <td>{{ r.plan }}</td>
               <td>{{ r.price }}€</td>
               <td>{% if r.paid %}<span class="tag tag-executed">sì</span>{% else %}<span class="tag tag-closed">demo</span>{% endif %}</td>
@@ -115,12 +137,34 @@
                 </form>
                 {% else %}<span class="hint">—</span>{% endif %}
               </td>
+              <td>
+                <form method="POST" action="{{ url_for('ban_user') }}" style="margin:0;"
+                      onsubmit="return confirm('{% if r.banned %}Riammettere{% else %}BANNARE{% endif %} {{ r.email }} dal sito?');">
+                  <input type="hidden" name="license_id" value="{{ r.id }}" />
+                  {% if r.banned %}
+                  <button type="submit" class="btn btn-ghost btn-sm" title="Riammetti l'utente">✅ Sbanna</button>
+                  {% else %}
+                  <button type="submit" class="btn btn-sm" style="background:var(--red);color:#fff;" title="Blocca l'utente dal sito">🚫 Banna</button>
+                  {% endif %}
+                </form>
+              </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="empty">Ancora nessun abbonato</td></tr>
+            <tr><td colspan="9" class="empty">Ancora nessun abbonato</td></tr>
             {% endfor %}
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Popup dettaglio andamento utente -->
+    <div id="detailModal" class="modal-backdrop" style="display:none;" onclick="closeDetail(event)">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="panel-head">
+          <h2 id="dTitle">Andamento utente</h2>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="closeDetail()">✕</button>
+        </div>
+        <div id="dBody"></div>
       </div>
     </div>
   </main>
@@ -149,5 +193,48 @@
     data: { labels: Object.keys(monthData), datasets: [{ data: Object.values(monthData), backgroundColor: "#22c98a", borderRadius: 6 }] },
     options: barOpts,
   });
+
+  // Grafico guadagno medio per utente, per cripto
+  const earnData = {{ avg_by_coin|tojson }};
+  const earnEl = document.getElementById("earnChart");
+  if (earnEl && Object.keys(earnData).length) {
+    new Chart(earnEl, {
+      type: "bar",
+      data: { labels: Object.keys(earnData), datasets: [{
+        data: Object.values(earnData),
+        backgroundColor: Object.values(earnData).map((v) => (v >= 0 ? "#22c98a" : "#ff5d6c")),
+        borderRadius: 6,
+      }] },
+      options: barOpts,
+    });
+  } else if (earnEl) {
+    earnEl.parentElement.innerHTML = '<div class="empty">Ancora nessun segnale chiuso: il grafico si popolerà appena il bot invia segnali che raggiungono target o stop.</div>';
+  }
+
+  // Popup dettaglio andamento di un utente
+  const DETAILS = {{ user_details|tojson }};
+  const euro = (n) => (n >= 0 ? "" : "-") + Math.abs(n).toFixed(2) + "€";
+  function openDetail(id) {
+    const d = DETAILS[id];
+    if (!d) return;
+    document.getElementById("dTitle").textContent = "Andamento · " + d.email;
+    let h = `<div class="community-row"><span>Guadagno stimato totale</span>
+      <b class="${d.total >= 0 ? "pos" : "neg"}">${euro(d.total)}</b></div>`;
+    if (d.top_coin) h += `<div class="community-row"><span>Guadagna di più con</span><b>${d.top_coin}</b></div>`;
+    h += `<div class="community-row"><span>Sta investendo ora su</span>
+      <b>${d.investing.length ? d.investing.join(", ") : "—"}</b></div>`;
+    h += '<div style="margin:12px 0 6px;font-size:13px;color:var(--muted);">Dettaglio per cripto:</div>';
+    if (d.coins.length) {
+      h += d.coins.map((c) => `<div class="community-row community-sub">
+        <span>${c.coin} · ${c.signals} segnali</span>
+        <b class="${c.gain >= 0 ? "pos" : "neg"}">${euro(c.gain)}</b></div>`).join("");
+    } else {
+      h += '<div class="hint">Nessun segnale chiuso ancora.</div>';
+    }
+    h += '<p class="hint" style="margin-top:12px;">Stima basata sui segnali (a target / stop), non un profitto garantito.</p>';
+    document.getElementById("dBody").innerHTML = h;
+    document.getElementById("detailModal").style.display = "flex";
+  }
+  function closeDetail(e) { document.getElementById("detailModal").style.display = "none"; }
 </script>
 {% endblock %}

@@ -18,6 +18,7 @@ class License(db.Model):
     key = db.Column(db.String(64), nullable=False, unique=True, index=True)
     active = db.Column(db.Boolean, default=True, nullable=False)
     activated = db.Column(db.Boolean, default=False, nullable=False)
+    banned = db.Column(db.Boolean, default=False, nullable=False)  # bannato dal creatore (sicurezza)
     paid = db.Column(db.Boolean, default=False)          # True se pagato con Stripe (non demo)
     influencer_slot = db.Column(db.Integer, nullable=True)  # 1..5, da quale influencer arriva
     # Nome dell'influencer FOTOGRAFATO al momento dell'iscrizione: non cambia

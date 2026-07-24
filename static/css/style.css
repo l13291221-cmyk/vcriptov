@@ -254,6 +254,15 @@ canvas { max-width: 100%; }
 .community-row.community-sub { background: transparent; padding: 4px 12px; font-size: 13px; color: var(--muted); }
 .community-row .pos { color: var(--green); }
 .community-row .neg { color: var(--red); }
+/* Popup dettaglio utente (amministrazione) */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 20px 22px; width: 100%; max-width: 460px; max-height: 85vh; overflow-y: auto;
+}
 .risk-banner {
   background: rgba(255,207,92,.08); border: 1px solid rgba(255,207,92,.3);
   border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #e6d6a8;
