@@ -69,7 +69,8 @@
     <div class="panel">
       <div class="panel-head"><h2>💶 Prezzi e funzioni degli abbonamenti</h2></div>
       <p class="hint">Modifica qui <b>prezzo</b>, <b>prezzo barrato</b> (facoltativo, per mostrare uno sconto) e
-      l'<b>elenco delle funzioni</b> di ogni piano — una funzione per riga. Le modifiche vanno online subito.</p>
+      l'<b>elenco delle funzioni</b> di ogni piano — una funzione per riga. Scrivi solo in italiano:
+      l'inglese lo gestisce il sito da solo. Le modifiche vanno online subito.</p>
       <form method="POST" action="{{ url_for('save_plans') }}">
         <div class="plan-edit-grid">
           {% for pid in plan_order %}
@@ -87,12 +88,8 @@
               </div>
             </div>
             <div class="field">
-              <label>Funzioni 🇮🇹 (una per riga)</label>
+              <label>Funzioni (una per riga)</label>
               <textarea name="features_{{ pid }}" rows="4" class="adm-in">{{ p.features | join('\n') }}</textarea>
-            </div>
-            <div class="field">
-              <label>Funzioni 🇬🇧 (una per riga)</label>
-              <textarea name="features_en_{{ pid }}" rows="4" class="adm-in">{{ (p.features_en or p.features) | join('\n') }}</textarea>
             </div>
           </div>
           {% endfor %}

@@ -252,8 +252,8 @@
   const alAddBtn = document.getElementById("alAdd");
   if (alAddBtn) alAddBtn.addEventListener("click", addAlert);
 
-  function refreshAll() {
-    // Prezzi, badge e segnali: veloci → mostrati SUBITO, senza aspettare Kraken.
+  // Roba veloce: prezzi, badge, segnali, avvisi. Ogni 5s.
+  function refreshFast() {
     getJSON("/api/prices").then((p) => {
       lastPrices = p; renderPrices(p);
       if (lastAccount) applyAccount(lastAccount);  // ricalcola KPI con prezzi freschi
@@ -262,14 +262,20 @@
     renderSignals();
     refreshAlerts();
     refreshTrack();
-    // Conto Kraken: può essere più lento → aggiornato appena pronto, a parte.
+  }
+
+  // Conto Kraken: pesante (lettura autenticata) → aggiornato ogni 20s, e in caso
+  // di errore momentaneo NON azzeriamo lo schermo (teniamo l'ultimo stato buono).
+  function refreshAccount() {
     getJSON("/api/account").then((acc) => { lastAccount = acc; applyAccount(acc); })
-      .catch(() => {});
+      .catch(() => {});  // errore di rete: teniamo l'ultimo stato, niente scatti
   }
 
   // Stato iniziale immediato: niente numeri finti finché il conto non risponde.
   blankKPIs();
   showChart(false);
-  refreshAll();
-  setInterval(refreshAll, 5000);
+  refreshFast();
+  refreshAccount();
+  setInterval(refreshFast, 5000);
+  setInterval(refreshAccount, 20000);
 })();

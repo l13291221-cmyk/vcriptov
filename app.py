@@ -203,6 +203,12 @@ CREATOR_EMAIL = "assistenza.vcriptov@gmail.com"  # email di accesso/recupero del
 
 _plans_loaded_at = 0.0
 
+# Cache dello snapshot del conto Kraken, per non interrogarlo a ogni refresh
+# (altrimenti la schermata va a scatti). Vedi /api/account.
+_account_cache: dict = {}
+ACCOUNT_TTL = 20      # secondi: riusa lo stesso snapshot
+ACCOUNT_GRACE = 180   # secondi: durante un errore mostra l'ultimo saldo valido
+
 
 def load_plan_overrides():
     """Applica al dizionario PLANS i prezzi e le funzioni personalizzati dal
@@ -1277,7 +1283,9 @@ def register_routes(app: Flask):
             except (ValueError, TypeError):
                 pc.old_price_eur = None
             pc.features = (request.form.get(f"features_{pid}") or "").strip() or None
-            pc.features_en = (request.form.get(f"features_en_{pid}") or "").strip() or None
+            # L'inglese resta quello professionale di default: il creatore scrive
+            # solo in italiano, non deve tradurre nulla.
+            pc.features_en = None
             db.session.add(pc)
         db.session.commit()
         load_plan_overrides()
@@ -1642,10 +1650,37 @@ def register_routes(app: Flask):
     @app.route("/api/account")
     @login_required
     def api_account():
-        """Saldo e operazioni REALI dal conto Kraken del cliente (sola lettura)."""
+        """Saldo e operazioni REALI dal conto Kraken del cliente (sola lettura).
+
+        Per evitare che la schermata "vada a scatti": lo snapshot viene messo in
+        cache per ~20s e, se una lettura fallisce per un intoppo momentaneo di
+        Kraken, continuiamo a mostrare l'ultimo saldo valido invece di far
+        sparire tutto. Così la connessione appare stabile."""
         lic = current_license()
         s = lic.settings
-        snap = account_snapshot(s)
+        now = time.time()
+        c = _account_cache.get(lic.id)
+        if c and now - c["ts"] < ACCOUNT_TTL:
+            snap = c["result"]
+        else:
+            fresh = account_snapshot(s)
+            prev = c or {}
+            if fresh.get("connected"):
+                snap = fresh
+                _account_cache[lic.id] = {"ts": now, "result": fresh,
+                                          "good": fresh, "good_ts": now}
+            else:
+                # Errore temporaneo: se avevamo un saldo valido di recente, lo
+                # riproponiamo (niente flicker), altrimenti mostriamo l'errore.
+                if prev.get("good") and now - prev.get("good_ts", 0) < ACCOUNT_GRACE:
+                    snap = dict(prev["good"])
+                    snap["stale"] = True
+                else:
+                    snap = fresh
+                _account_cache[lic.id] = {"ts": now, "result": snap,
+                                          "good": prev.get("good"),
+                                          "good_ts": prev.get("good_ts", 0)}
+        snap = dict(snap)
         snap["live_trading"] = bool(s and s.live_trading)
         return jsonify(snap)
 
