@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="{{ lang | default('it') }}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -26,8 +26,8 @@
   <div id="supportPopup" class="support-popup" onclick="if(event.target===this)toggleSupport()">
     <div class="support-card">
       <button class="support-close" onclick="toggleSupport()" aria-label="Chiudi">✕</button>
-      <h3 style="margin-bottom:4px;">🎧 Assistenza</h3>
-      <p class="hint" style="margin-top:0;">Hai bisogno di aiuto? Contattaci.</p>
+      <h3 style="margin-bottom:4px;">{{ t('nav_support') }}</h3>
+      <p class="hint" style="margin-top:0;">{{ t('support_need') }}</p>
       <a href="mailto:assistenza.vcriptov@gmail.com" class="support-row">
         <span>📧</span><span>assistenza.vcriptov@gmail.com</span>
       </a>

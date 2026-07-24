@@ -12,82 +12,74 @@
   <main class="main">
     <div class="topbar">
       <div>
-        <h1>Dashboard di trading</h1>
-        <div class="hint">Piano {{ plan.name }} · {{ symbols|length }} crypto monitorate</div>
+        <h1>{{ t('dash_title') }}</h1>
+        <div class="hint">{{ t('dash_plan') }} {{ plan.name }} · {{ symbols|length }} {{ t('dash_monitored') }}</div>
       </div>
       <div class="bot-status">
-        <span class="dot"></span> Bot attivo · aggiornamento ogni 30s
-        · <span id="dataBadge" class="data-badge data-offline">dati…</span>
-        {% if plan.sentiment %}· <span style="color:var(--yellow)">Filtro sentiment ON</span>{% endif %}
+        <span class="dot"></span> {{ t('dash_botactive') }}
+        · <span id="dataBadge" class="data-badge data-offline">{{ t('dash_data') }}</span>
+        {% if plan.sentiment %}· <span style="color:var(--yellow)">{{ t('dash_sentiment_on') }}</span>{% endif %}
       </div>
     </div>
 
-    <div class="risk-banner">
-      ⚠️ <b>Avviso.</b> I segnali del bot sono analisi automatiche e <b>non sono
-      accurati al 100%</b>. Non costituiscono consulenza finanziaria: <b>controlla
-      sempre tu ogni investimento</b> e non affidarti ciecamente al bot. Investendo
-      rischi il tuo capitale.
-    </div>
+    <div class="risk-banner">{{ t('dash_risk')|safe }}</div>
 
     <div class="connect-hint" id="connectHint" style="display:none;">
-      🔗 <b>Collega il tuo Kraken</b> nelle
-      <a href="{{ url_for('settings_view') }}">Impostazioni</a> per vedere qui i tuoi
-      dati reali: saldo, operazioni e profitti. Finché non è collegato, non mostriamo
-      numeri inventati.
+      {{ t('dash_connect')|safe }}
     </div>
 
     <!-- KPI -->
     <div class="kpi-grid">
       <div class="kpi">
-        <div class="label">Equity totale</div>
+        <div class="label">{{ t('kpi_equity') }}</div>
         <div class="value" id="kpi-equity">—</div>
         <div class="sub" id="kpi-equity-sub">—</div>
       </div>
       <div class="kpi">
-        <div class="label">P&L totale</div>
+        <div class="label">{{ t('kpi_pnl') }}</div>
         <div class="value" id="kpi-pnl">—</div>
         <div class="sub" id="kpi-pnl-pct">—</div>
       </div>
       <div class="kpi">
-        <div class="label">Liquidità</div>
+        <div class="label">{{ t('kpi_cash') }}</div>
         <div class="value" id="kpi-cash">—</div>
-        <div class="sub">Investito: <span id="kpi-invested">—</span></div>
+        <div class="sub">{{ t('kpi_invested') }}: <span id="kpi-invested">—</span></div>
       </div>
       <div class="kpi">
-        <div class="label">Posizioni aperte</div>
+        <div class="label">{{ t('kpi_open') }}</div>
         <div class="value" id="kpi-open">—</div>
-        <div class="sub">Win rate: <span id="kpi-winrate">—</span></div>
+        <div class="sub">{{ t('kpi_winrate') }}: <span id="kpi-winrate">—</span></div>
       </div>
     </div>
 
     <div class="grid-2">
       <div class="panel">
-        <div class="panel-head"><h2>Andamento del conto</h2><span class="hint" id="equity-live"></span></div>
+        <div class="panel-head"><h2>{{ t('panel_account_trend') }}</h2><span class="hint" id="equity-live"></span></div>
         <div class="chart-box"><canvas id="equityChart"></canvas></div>
-        <div class="chart-placeholder" id="equityPlaceholder">Collega il tuo Kraken per vedere l'andamento reale del conto.</div>
+        <div class="chart-placeholder" id="equityPlaceholder">{{ t('chart_connect') }}</div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h2>Prezzi di mercato</h2></div>
-        <div class="price-list" id="priceList"><div class="empty">Caricamento…</div></div>
+        <div class="panel-head"><h2>{{ t('panel_prices') }}</h2></div>
+        <div class="price-list" id="priceList"><div class="empty">{{ t('loading') }}</div></div>
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h2>Posizioni aperte</h2></div>
+      <div class="panel-head"><h2>{{ t('panel_positions') }}</h2></div>
       <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Crypto</th><th>Lato</th><th>Quantità</th><th>Prezzo entrata</th><th>Prezzo attuale</th><th>P&L</th></tr></thead>
-          <tbody id="positionsBody"><tr><td colspan="6" class="empty">Nessuna posizione aperta</td></tr></tbody>
+          <thead><tr><th>{{ t('th_crypto') }}</th><th>{{ t('th_side') }}</th><th>{{ t('th_qty') }}</th><th>{{ t('th_entry') }}</th><th>{{ t('th_current') }}</th><th>P&L</th></tr></thead>
+          <tbody id="positionsBody"><tr><td colspan="6" class="empty">{{ t('no_open_pos') }}</td></tr></tbody>
         </table>
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h2>Storico operazioni</h2></div>
+      <div class="panel-head"><h2>{{ t('panel_history') }}</h2></div>
       <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Crypto</th><th>Lato</th><th>Quantità</th><th>Entrata</th><th>Uscita</th><th>P&L</th><th>Chiusa</th></tr></thead>
-          <tbody id="tradesBody"><tr><td colspan="7" class="empty">Nessuna operazione chiusa</td></tr></tbody>
+          <thead><tr><th>{{ t('th_crypto') }}</th><th>{{ t('th_side') }}</th><th>{{ t('th_qty') }}</th><th>{{ t('th_in') }}</th><th>{{ t('th_out') }}</th><th>P&L</th><th>{{ t('th_closed') }}</th></tr></thead>
+          <tbody id="tradesBody"><tr><td colspan="7" class="empty">{{ t('no_closed_trades') }}</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -95,39 +87,39 @@
     {% if plan.telegram %}
     <div class="panel" id="accountPanel">
       <div class="panel-head">
-        <h2>💰 Conto Kraken reale</h2>
-        <span id="accountBadge" class="data-badge data-offline">non collegato</span>
+        <h2>{{ t('panel_kraken') }}</h2>
+        <span id="accountBadge" class="data-badge data-offline">{{ t('not_connected') }}</span>
       </div>
-      <div id="accountBody"><div class="empty">Collega Kraken e attiva il trading reale nelle Impostazioni per vedere qui saldo e operazioni vere.</div></div>
+      <div id="accountBody"><div class="empty">{{ t('kraken_hint') }}</div></div>
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h2>🔔 Avvisi di prezzo</h2></div>
-      <p class="hint" style="margin-top:-6px;">Ti avvisiamo su Telegram quando una crypto raggiunge il prezzo che scegli.</p>
+      <div class="panel-head"><h2>{{ t('panel_alerts') }}</h2></div>
+      <p class="hint" style="margin-top:-6px;">{{ t('alerts_hint') }}</p>
       <div class="alert-form">
         <select id="alSymbol">
           {% for sym in symbols %}<option value="{{ sym }}">{{ sym.replace('/USDT','') }}</option>{% endfor %}
         </select>
         <select id="alDir">
-          <option value="below">scende sotto</option>
-          <option value="above">sale sopra</option>
+          <option value="below">{{ t('alert_below') }}</option>
+          <option value="above">{{ t('alert_above') }}</option>
         </select>
-        <input type="number" id="alTarget" placeholder="Prezzo ($)" step="any" />
-        <button type="button" class="btn btn-primary btn-sm" id="alAdd">+ Aggiungi</button>
+        <input type="number" id="alTarget" placeholder="{{ t('alert_price_ph') }}" step="any" />
+        <button type="button" class="btn btn-primary btn-sm" id="alAdd">{{ t('alert_add') }}</button>
       </div>
       <div id="alertList" class="alert-list"></div>
     </div>
 
     <div class="panel">
       <div class="panel-head">
-        <h2>📨 Segnali inviati su Telegram</h2>
+        <h2>{{ t('panel_signals') }}</h2>
         <span class="hint" id="trackRecord"></span>
       </div>
-      <p class="hint" style="margin-top:-6px;">I segnali sono indicativi e non accurati al 100%: valuta sempre tu prima di investire.</p>
+      <p class="hint" style="margin-top:-6px;">{{ t('signals_hint') }}</p>
       <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Crypto</th><th>Azione</th><th>Prezzo</th><th>SL / TP</th><th>Esito</th><th>Quando</th></tr></thead>
-          <tbody id="signalsBody"><tr><td colspan="6" class="empty">Nessun segnale ancora</td></tr></tbody>
+          <thead><tr><th>{{ t('th_crypto') }}</th><th>{{ t('th_action') }}</th><th>{{ t('th_price') }}</th><th>SL / TP</th><th>{{ t('th_result') }}</th><th>{{ t('th_when') }}</th></tr></thead>
+          <tbody id="signalsBody"><tr><td colspan="6" class="empty">{{ t('no_signals') }}</td></tr></tbody>
         </table>
       </div>
     </div>

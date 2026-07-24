@@ -1499,8 +1499,7 @@ def register_routes(app: Flask):
             l.id: l for l in
             License.query.filter_by(active=True, activated=True, banned=False).all()
         }
-        risk_label = {"prudente": "Rischio basso", "bilanciata": "Rischio medio",
-                      "aggressiva": "Rischio alto"}
+        risk_key = {"prudente": "low", "bilanciata": "medium", "aggressiva": "high"}
         rows = []
         for lic_id, coins in earn.items():
             lic = lics.get(lic_id)
@@ -1513,10 +1512,10 @@ def register_routes(app: Flask):
             strat = (lic.settings.strategy if lic.settings else None) or "bilanciata"
             rows.append({
                 # Etichetta anonima ma stabile per utente (nessun dato personale).
-                "name": f"Utente {1000 + (lic_id * 37) % 9000}",
+                "name": f"{1000 + (lic_id * 37) % 9000}",
                 "gain": round(total, 2),
                 "coin": top,
-                "risk": risk_label.get(strat, "Rischio medio"),
+                "risk": risk_key.get(strat, "medium"),
             })
         rows.sort(key=lambda x: x["gain"], reverse=True)
         return render_template(

@@ -5,24 +5,28 @@
       </div>
       <div class="brand-name" style="font-size:18px;">VCriptoV</div>
     </div>
-    <a href="javascript:void(0)" onclick="toggleSupport()" class="nav-link">🎧 Assistenza</a>
-    <a href="{{ url_for('how_it_works') }}" class="nav-link">📘 Come funziona</a>
+    <a href="javascript:void(0)" onclick="toggleSupport()" class="nav-link">{{ t('nav_support') }}</a>
+    <a href="{{ url_for('how_it_works') }}" class="nav-link">{{ t('nav_how') }}</a>
     <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-      📊 Dashboard
+      {{ t('nav_dashboard') }}
     </a>
     <a href="{{ url_for('settings_view') }}" class="nav-link {% if request.endpoint == 'settings_view' %}active{% endif %}">
-      ⚙️ Impostazioni
+      {{ t('nav_settings') }}
     </a>
     <a href="{{ url_for('leaderboard') }}" class="nav-link {% if request.endpoint == 'leaderboard' %}active{% endif %}">
-      🏆 Classifica
+      {{ t('nav_leaderboard') }}
     </a>
     {% if is_admin %}
     <a href="{{ url_for('admin') }}" class="nav-link {% if request.endpoint == 'admin' %}active{% endif %}">
-      👑 Amministrazione
+      {{ t('nav_admin') }}
     </a>
     {% endif %}
-    <a href="{{ url_for('logout') }}" class="nav-link">🚪 Esci</a>
+    <a href="{{ url_for('logout') }}" class="nav-link">{{ t('nav_logout') }}</a>
     <div class="side-foot">
+      <span class="lang-switch" style="margin-bottom:8px;">
+        <a href="{{ url_for('set_language', code='it') }}" class="{% if lang == 'it' %}on{% endif %}">IT</a>
+        <a href="{{ url_for('set_language', code='en') }}" class="{% if lang == 'en' %}on{% endif %}">EN</a>
+      </span>
       {% if plan %}<span class="plan-pill">{{ plan.name }}</span>{% endif %}
       {% if license %}<div>{{ license.email }}</div>{% endif %}
       <div style="margin-top:6px;opacity:.7;">© VCriptoV</div>
