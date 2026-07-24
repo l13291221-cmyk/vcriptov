@@ -202,6 +202,20 @@ class PriceAlert(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class PlanConfig(db.Model):
+    """Personalizzazioni dei piani salvate dal creatore (prezzo e funzioni), che
+    sovrascrivono i valori di default di plans.py. Vuoto = si usa il default."""
+
+    __tablename__ = "plan_config"
+
+    plan_id = db.Column(db.String(32), primary_key=True)
+    price_eur = db.Column(db.Float, nullable=True)
+    old_price_eur = db.Column(db.Float, nullable=True)
+    features = db.Column(db.Text, nullable=True)      # una funzione per riga (italiano)
+    features_en = db.Column(db.Text, nullable=True)   # una funzione per riga (inglese)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class AdminLog(db.Model):
     """Registro delle azioni del creatore nell'area Amministrazione (sicurezza):
     ban/sblocco, sblocco dispositivo, estensione abbonamento, ecc."""

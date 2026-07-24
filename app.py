@@ -53,6 +53,7 @@ from models import (
     Influencer,
     InfluencerAccess,
     License,
+    PlanConfig,
     PriceAlert,
     Portfolio,
     Review,
@@ -182,6 +183,7 @@ def create_app() -> Flask:
     with app.app_context():
         db.create_all()
         ensure_schema()
+        load_plan_overrides()
 
     register_routes(app)
 
@@ -197,6 +199,35 @@ DEVICE_COOKIE = "vcriptov_device"
 LOGOUT_COOKIE = "vcriptov_logout"   # se presente, disattiva l'auto-accesso dopo "Esci"
 SUBSCRIPTION_DAYS = 30  # durata di un abbonamento mensile prima della scadenza
 CREATOR_EMAIL = "assistenza.vcriptov@gmail.com"  # email di accesso/recupero del creatore
+
+
+_plans_loaded_at = 0.0
+
+
+def load_plan_overrides():
+    """Applica al dizionario PLANS i prezzi e le funzioni personalizzati dal
+    creatore (salvati in PlanConfig). Così get_plan() e il paywall usano subito
+    i valori modificati, senza toccare il codice."""
+    try:
+        def _clean(v):
+            # Mostra 39 invece di 39.0 quando il prezzo è intero.
+            if v is None:
+                return None
+            return int(v) if float(v).is_integer() else v
+
+        for pc in PlanConfig.query.all():
+            p = PLANS.get(pc.plan_id)
+            if not p:
+                continue
+            if pc.price_eur is not None:
+                p["price_eur"] = _clean(pc.price_eur)
+            p["old_price_eur"] = _clean(pc.old_price_eur)
+            if pc.features:
+                p["features"] = [ln.strip() for ln in pc.features.splitlines() if ln.strip()]
+            if pc.features_en:
+                p["features_en"] = [ln.strip() for ln in pc.features_en.splitlines() if ln.strip()]
+    except Exception:
+        db.session.rollback()
 
 
 def is_expired(lic) -> bool:
@@ -452,6 +483,16 @@ def ensure_influencer_license(slot: int):
 
 # ------------------------------------------------------------------ routes
 def register_routes(app: Flask):
+
+    @app.before_request
+    def _refresh_plans():
+        # Ricarica i prezzi/funzioni personalizzati ogni tanto, così anche più
+        # processi restano allineati dopo una modifica (senza query a ogni click).
+        global _plans_loaded_at
+        now = time.time()
+        if now - _plans_loaded_at > 15:
+            load_plan_overrides()
+            _plans_loaded_at = now
 
     @app.context_processor
     def inject_globals():
@@ -1171,6 +1212,7 @@ def register_routes(app: Flask):
                 InfluencerAccess.created_at.desc()).all(),
             admin_log=AdminLog.query.order_by(AdminLog.created_at.desc()).limit(50).all(),
             inf_payouts=inf_payouts,
+            plan_order=[p for p in PLAN_ORDER if p != "trial"],
         )
 
     @app.route("/admin/save-influencers", methods=["POST"])
@@ -1214,6 +1256,34 @@ def register_routes(app: Flask):
                 inf.collab_start = None
         db.session.commit()
         flash("Influencer aggiornati (nomi, password, codici sconto).", "success")
+        return redirect(url_for("admin"))
+
+    @app.route("/admin/save-plans", methods=["POST"])
+    @admin_required
+    def save_plans():
+        """Salva prezzi e funzioni personalizzati dei piani (dal pannello creatore)."""
+        global _plans_loaded_at
+        for pid in PLAN_ORDER:
+            if pid == "trial":
+                continue  # la prova gratuita resta gratis
+            pc = db.session.get(PlanConfig, pid) or PlanConfig(plan_id=pid)
+            try:
+                pc.price_eur = max(0.0, float(request.form.get(f"price_{pid}", 0) or 0))
+            except (ValueError, TypeError):
+                pc.price_eur = None
+            old_raw = (request.form.get(f"old_{pid}") or "").strip()
+            try:
+                pc.old_price_eur = float(old_raw) if old_raw else None
+            except (ValueError, TypeError):
+                pc.old_price_eur = None
+            pc.features = (request.form.get(f"features_{pid}") or "").strip() or None
+            pc.features_en = (request.form.get(f"features_en_{pid}") or "").strip() or None
+            db.session.add(pc)
+        db.session.commit()
+        load_plan_overrides()
+        _plans_loaded_at = time.time()
+        log_admin("edit_plans", None, "Prezzi/funzioni piani aggiornati")
+        flash("Piani aggiornati! I nuovi prezzi e funzioni sono già online.", "success")
         return redirect(url_for("admin"))
 
     @app.route("/admin/reset-device", methods=["POST"])

@@ -148,8 +148,8 @@ PLANS = {
     "annuale": {
         "id": "annuale",
         "name": "VIP Annuale",
-        "price_eur": 540,          # 12 × 45€, senza sconto: paghi una volta l'anno
-        "old_price_eur": None,
+        "price_eur": 350,          # conviene rispetto ai 45€/mese (540€/anno)
+        "old_price_eur": 540,
         "period": "anno",
         "period_en": "year",
         "interval": "year",
@@ -174,7 +174,7 @@ PLANS = {
     "lifetime": {
         "id": "lifetime",
         "name": "Lifetime",
-        "price_eur": 200,
+        "price_eur": 650,          # premium: paghi una volta e basta, per sempre
         "old_price_eur": None,
         "period": "una tantum",
         "period_en": "one-time",

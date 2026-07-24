@@ -67,6 +67,41 @@
     </div>
 
     <div class="panel">
+      <div class="panel-head"><h2>💶 Prezzi e funzioni degli abbonamenti</h2></div>
+      <p class="hint">Modifica qui <b>prezzo</b>, <b>prezzo barrato</b> (facoltativo, per mostrare uno sconto) e
+      l'<b>elenco delle funzioni</b> di ogni piano — una funzione per riga. Le modifiche vanno online subito.</p>
+      <form method="POST" action="{{ url_for('save_plans') }}">
+        <div class="plan-edit-grid">
+          {% for pid in plan_order %}
+          {% set p = plans[pid] %}
+          <div class="plan-edit-card">
+            <h3>{{ p.name }} <span class="hint">/ {{ p.period }}</span></h3>
+            <div class="settings-grid" style="grid-template-columns:1fr 1fr;">
+              <div class="field">
+                <label>Prezzo (€)</label>
+                <input type="number" name="price_{{ pid }}" value="{{ p.price_eur }}" min="0" step="1" class="adm-in" />
+              </div>
+              <div class="field">
+                <label>Prezzo barrato (€)</label>
+                <input type="number" name="old_{{ pid }}" value="{{ p.old_price_eur or '' }}" min="0" step="1" placeholder="(nessuno)" class="adm-in" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Funzioni 🇮🇹 (una per riga)</label>
+              <textarea name="features_{{ pid }}" rows="4" class="adm-in">{{ p.features | join('\n') }}</textarea>
+            </div>
+            <div class="field">
+              <label>Funzioni 🇬🇧 (una per riga)</label>
+              <textarea name="features_en_{{ pid }}" rows="4" class="adm-in">{{ (p.features_en or p.features) | join('\n') }}</textarea>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:14px;">💾 Salva prezzi e funzioni</button>
+      </form>
+    </div>
+
+    <div class="panel">
       <div class="panel-head"><h2>Influencer: accessi e codici sconto</h2></div>
       <p class="hint">Per ogni influencer: <b>nome</b> e <b>password</b> (per entrare da “📣 Influencer”),
       più un <b>codice sconto</b>, la <b>percentuale</b> e una <b>data di scadenza</b> facoltativa
