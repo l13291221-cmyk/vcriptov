@@ -28,10 +28,10 @@ TRANSLATIONS = {
                      "en": "Need help? Get in touch."},
 
     # --- paywall / landing ---
-    "tagline": {"it": "Trading bot automatizzato per criptovalute",
-                "en": "Automated crypto trading bot"},
-    "hero_title": {"it": "Sblocca il tuo bot di trading",
-                   "en": "Unlock your trading bot"},
+    "tagline": {"it": "Segnali e analisi crypto automatiche, sul tuo Telegram",
+                "en": "Automatic crypto signals & analysis, on your Telegram"},
+    "hero_title": {"it": "Il tuo assistente crypto personale, sempre attivo",
+                   "en": "Your personal crypto assistant, always on"},
     "hero_lead": {
         "it": "Scegli un piano per attivare la dashboard, i segnali automatici e il "
               "motore di trading in background. Riceverai subito un ",
