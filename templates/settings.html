@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Impostazioni — VCriptoV{% endblock %}
+{% block title %}{{ t('set_title') }} — VCriptoV{% endblock %}
 {% block body_class %}app-body{% endblock %}
 
 {% block content %}
@@ -9,34 +9,31 @@
   <main class="main">
     <div class="topbar">
       <div>
-        <h1>Impostazioni</h1>
-        <div class="hint">Configura account, exchange, notifiche e strategia — tutto da qui, nessun file da modificare.</div>
+        <h1>{{ t('set_title') }}</h1>
+        <div class="hint">{{ t('set_sub') }}</div>
       </div>
     </div>
 
     <form method="POST" action="{{ url_for('settings_view') }}">
       <div class="panel">
-        <h2>Account</h2>
+        <h2>{{ t('set_account') }}</h2>
         <div class="settings-grid">
           <div class="field">
             <label>Email</label>
             <input type="email" name="contact_email" value="{{ s.contact_email or '' }}" />
           </div>
           <div class="field">
-            <label>Piano attivo</label>
+            <label>{{ t('set_active_plan') }}</label>
             <input type="text" value="{{ plan.name }}" disabled />
           </div>
         </div>
       </div>
 
       <div class="panel">
-        <h2>Exchange (collega il tuo conto)</h2>
-        <p class="hint">Le chiavi vengono cifrate (AES) prima di essere salvate nel database. Non vengono mai mostrate in chiaro.</p>
+        <h2>{{ t('set_exchange') }}</h2>
+        <p class="hint">{{ t('set_keys_enc') }}</p>
         <div class="disclaimer" style="margin-bottom:14px;border-color:rgba(255,93,108,.4);background:rgba(255,93,108,.06);">
-          🔒 <strong>Importante per la tua sicurezza:</strong> crea la chiave API su Kraken
-          <strong>SENZA il permesso di prelievo ("Withdraw funds")</strong>. Dai solo i
-          permessi di lettura e (se vuoi il trading automatico) di creazione ordini. Così,
-          anche nel caso peggiore, nessuno potrà mai prelevare i tuoi fondi.
+          {{ t('set_kraken_warn')|safe }}
         </div>
         <div class="settings-grid">
           <div class="field">
@@ -50,64 +47,64 @@
           <div></div>
           <div class="field">
             <label>API Key</label>
-            <input type="text" name="api_key" placeholder="{{ masked_api_key or 'Inserisci la tua API Key' }}" autocomplete="off" />
-            <div class="hint">{% if masked_api_key %}Attuale: {{ masked_api_key }} — lascia vuoto per non modificare.{% endif %}</div>
+            <input type="text" name="api_key" placeholder="{{ masked_api_key or t('set_enter_apikey') }}" autocomplete="off" />
+            <div class="hint">{% if masked_api_key %}{{ t('set_current') }}: {{ masked_api_key }} — {{ t('set_leave_blank') }}{% endif %}</div>
           </div>
           <div class="field">
             <label>API Secret</label>
-            <input type="password" name="api_secret" placeholder="{{ masked_api_secret or 'Inserisci il tuo Secret' }}" autocomplete="off" />
-            <div class="hint">{% if masked_api_secret %}Salvato ✓ — lascia vuoto per non modificare.{% endif %}</div>
+            <input type="password" name="api_secret" placeholder="{{ masked_api_secret or t('set_enter_secret') }}" autocomplete="off" />
+            <div class="hint">{% if masked_api_secret %}{{ t('set_saved_blank') }}{% endif %}</div>
           </div>
         </div>
       </div>
 
       <div class="panel {% if not plan.telegram %}locked{% endif %}">
-        <h2>Notifiche Telegram {% if not plan.telegram %}🔒{% endif %}</h2>
+        <h2>{{ t('set_tg_title') }} {% if not plan.telegram %}🔒{% endif %}</h2>
         {% if plan.telegram %}
           <details class="tg-guide">
-            <summary>❓ Non sai come si fa? Apri la guida passo-passo</summary>
+            <summary>{{ t('set_tg_guide') }}</summary>
             <ol class="tg-steps">
-              <li>Apri Telegram e nella barra di ricerca in alto scrivi <b>@BotFather</b>. Apri quello con la spunta blu.</li>
-              <li>Premi <b>Avvia</b> (o scrivi <code>/start</code>), poi scrivi <code>/newbot</code> e premi invio.</li>
-              <li>BotFather ti chiede un <b>nome</b> (quello che vuoi) e poi uno <b>username</b> che deve finire con <code>bot</code> (es. <code>miosegnali_bot</code>).</li>
-              <li>BotFather ti risponde con un <b>Token</b>, una riga tipo <code>123456789:AAE...xYz</code>. <b>Copialo e incollalo</b> nel campo “Token bot Telegram” qui sotto.</li>
-              <li>Ora serve il tuo <b>Chat ID</b>. Cerca <b>@userinfobot</b> su Telegram, aprilo e premi <b>Avvia</b>: ti risponde con un numero (“Id: 123456789”). <b>Copia quel numero</b> nel campo “Chat ID”.</li>
-              <li>Cerca il <b>tuo</b> bot (l'username che hai scelto al punto 3) e premi <b>Avvia</b> almeno una volta, altrimenti non può scriverti.</li>
-              <li>Premi <b>💾 Salva impostazioni</b> in fondo, poi torna qui e premi <b>“Invia messaggio di prova”</b>. Se ti arriva il messaggio, è tutto collegato! 🎉</li>
+              <li>{{ t('set_tg_s1')|safe }}</li>
+              <li>{{ t('set_tg_s2')|safe }}</li>
+              <li>{{ t('set_tg_s3')|safe }}</li>
+              <li>{{ t('set_tg_s4')|safe }}</li>
+              <li>{{ t('set_tg_s5')|safe }}</li>
+              <li>{{ t('set_tg_s6')|safe }}</li>
+              <li>{{ t('set_tg_s7')|safe }}</li>
             </ol>
           </details>
           <div class="settings-grid">
             <div class="field">
-              <label>Token bot Telegram</label>
+              <label>{{ t('set_tg_token') }}</label>
               <input type="password" name="telegram_token" placeholder="{{ masked_telegram or '123456789:AAE...xYz' }}" autocomplete="off" />
-              <div class="hint">{% if masked_telegram %}Salvato ✓ — lascia vuoto per non modificare.{% else %}Il codice che ti dà @BotFather (punto 4).{% endif %}</div>
+              <div class="hint">{% if masked_telegram %}{{ t('set_saved_blank') }}{% else %}{{ t('set_tg_token_hint') }}{% endif %}</div>
             </div>
             <div class="field">
               <label>Chat ID</label>
               <input type="text" name="telegram_chat_id" value="{{ s.telegram_chat_id or '' }}" placeholder="es. 123456789" />
-              <div class="hint">Il numero che ti dà @userinfobot (punto 5).</div>
+              <div class="hint">{{ t('set_tg_chatid_hint') }}</div>
             </div>
           </div>
           <div class="toggle-row" style="margin-top:6px;">
-            <button type="button" class="btn btn-ghost btn-sm" id="tgTestBtn">📨 Invia messaggio di prova</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="tgTestBtn">{{ t('set_tg_test') }}</button>
             <span id="tgTestResult" class="hint"></span>
           </div>
-          <p class="hint">Salva prima le impostazioni, poi prova. Il messaggio di prova usa Token e Chat ID già salvati.</p>
+          <p class="hint">{{ t('set_tg_test_hint') }}</p>
         {% else %}
-          <p class="lock-note">Disponibile nei piani Pro, VIP e Lifetime. Aggiorna il piano per abilitare le notifiche.</p>
+          <p class="lock-note">{{ t('set_tg_locked') }}</p>
         {% endif %}
       </div>
 
       {% if plan.telegram %}
       <div class="panel">
-        <h2>🎯 Strategia</h2>
-        <p class="hint">Scegli quanto vuoi essere prudente o aggressivo. Imposta in automatico rischio, stop loss e take profit.</p>
+        <h2>{{ t('set_strategy') }}</h2>
+        <p class="hint">{{ t('set_strategy_hint') }}</p>
         <div class="strategy-grid">
           {% for key, st in strategies.items() %}
           <label class="strategy-opt {% if s.strategy == key %}selected{% endif %}">
             <input type="radio" name="strategy" value="{{ key }}" hidden {% if s.strategy == key %}checked{% endif %} />
-            <div class="strategy-name">{{ st.name }}</div>
-            <div class="hint">{{ st.desc }}</div>
+            <div class="strategy-name">{% if lang == 'en' %}{{ st.name_en or st.name }}{% else %}{{ st.name }}{% endif %}</div>
+            <div class="hint">{% if lang == 'en' %}{{ st.desc_en or st.desc }}{% else %}{{ st.desc }}{% endif %}</div>
             <div class="strategy-meta">🛑 {{ st.sl }}%  ·  🎯 {{ st.tp }}%</div>
           </label>
           {% endfor %}
@@ -115,8 +112,8 @@
       </div>
 
       <div class="panel">
-        <h2>🪙 Crypto da seguire</h2>
-        <p class="hint">Ricevi i segnali solo per le crypto che scegli. Se non ne selezioni nessuna, le ricevi tutte.</p>
+        <h2>{{ t('set_coins') }}</h2>
+        <p class="hint">{{ t('set_coins_hint') }}</p>
         <div class="coin-grid">
           {% for sym in plan_symbol_list %}
           <label class="coin-chip {% if sym in chosen_symbols %}on{% endif %}">
@@ -128,49 +125,44 @@
       </div>
 
       <div class="panel danger-panel">
-        <h2>⚠️ Trading REALE su Kraken (soldi veri)</h2>
-        <p class="hint">
-          Se acceso, quando tocchi <b>✅ Investi</b> sul messaggio Telegram il bot
-          piazza un ordine <b>vero</b> sul tuo conto Kraken (con lo stop loss e take
-          profit della strategia scelta). Servono API Key/Secret Kraken <b>con
-          permesso di trading</b>. <b>Si rischiano soldi veri.</b> Inizia piccolo.
-        </p>
+        <h2>{{ t('set_real') }}</h2>
+        <p class="hint">{{ t('set_real_hint')|safe }}</p>
         <div class="toggle-row danger-toggle">
           <input type="checkbox" name="live_trading" id="lt" {% if s.live_trading %}checked{% endif %} />
-          <label for="lt" style="margin:0;font-weight:700;">Attiva il trading reale (parte SPENTO)</label>
+          <label for="lt" style="margin:0;font-weight:700;">{{ t('set_real_toggle') }}</label>
         </div>
         <div class="field" style="margin-top:12px;max-width:280px;">
-          <label>Importo massimo per ordine (€)</label>
+          <label>{{ t('set_max_order') }}</label>
           <input type="number" name="max_order_eur" step="1" min="1" value="{{ s.max_order_eur or 20 }}" />
-          <div class="hint">Tetto di spesa per ogni singolo investimento.</div>
+          <div class="hint">{{ t('set_max_order_hint') }}</div>
         </div>
       </div>
       {% endif %}
 
       {% if plan.custom_strategy %}
       <div class="panel">
-        <h2>🔧 Personalizzazione avanzata (VIP)</h2>
-        <p class="hint">Facoltativo: affina i parametri oltre alla strategia scelta sopra. Sovrascrive i valori della strategia.</p>
+        <h2>{{ t('set_advanced') }}</h2>
+        <p class="hint">{{ t('set_advanced_hint') }}</p>
         <div class="settings-grid">
           <div class="field">
-            <label>Rischio per operazione (%)</label>
+            <label>{{ t('set_risk_trade') }}</label>
             <input type="number" name="risk_per_trade" step="0.1" min="0.1" max="20" value="{{ s.risk_per_trade }}" />
           </div>
           <div></div>
           <div class="field">
-            <label>Media mobile veloce (periodi)</label>
+            <label>{{ t('set_fast_ma') }}</label>
             <input type="number" name="fast_ma" min="2" max="50" value="{{ s.fast_ma }}" />
           </div>
           <div class="field">
-            <label>Media mobile lenta (periodi)</label>
+            <label>{{ t('set_slow_ma') }}</label>
             <input type="number" name="slow_ma" min="3" max="200" value="{{ s.slow_ma }}" />
           </div>
           <div class="field">
-            <label>Stop loss (%)</label>
+            <label>{{ t('set_sl') }}</label>
             <input type="number" name="stop_loss_pct" step="0.5" min="0.5" value="{{ s.stop_loss_pct or 8 }}" />
           </div>
           <div class="field">
-            <label>Take profit (%)</label>
+            <label>{{ t('set_tp') }}</label>
             <input type="number" name="take_profit_pct" step="0.5" min="0.5" value="{{ s.take_profit_pct or 15 }}" />
           </div>
         </div>
@@ -180,31 +172,30 @@
       <div class="panel">
         <div class="toggle-row">
           <input type="checkbox" name="trading_enabled" id="te" {% if s.trading_enabled %}checked{% endif %} />
-          <label for="te" style="margin:0;">Motore di trading attivo</label>
+          <label for="te" style="margin:0;">{{ t('set_engine_on') }}</label>
         </div>
-        <p class="hint">Se disattivato, il bot smette di aprire nuove posizioni per il tuo account.</p>
+        <p class="hint">{{ t('set_engine_hint') }}</p>
       </div>
 
-      <button type="submit" class="btn btn-primary">💾 Salva impostazioni</button>
+      <button type="submit" class="btn btn-primary">{{ t('set_save') }}</button>
     </form>
 
     <div class="panel">
-      <h2>💳 Abbonamento</h2>
+      <h2>{{ t('set_subscription') }}</h2>
       {% if plan.lifetime %}
-        <p class="hint">Hai il piano <b>Lifetime</b>: pagamento unico, nessun rinnovo. L'accesso non scade.</p>
+        <p class="hint">{{ t('set_lifetime')|safe }}</p>
       {% elif license.stripe_subscription_id %}
         <p class="hint">
-          Il tuo abbonamento si <b>rinnova automaticamente ogni mese</b>{% if license.expires_at %},
-          prossimo rinnovo intorno al <b>{{ license.expires_at.strftime('%d/%m/%Y') }}</b>{% endif %}.
-          Puoi disdire quando vuoi: <b>mantieni l'accesso fino alla scadenza</b> già pagata e poi
-          non ti verrà più addebitato nulla.
+          {{ t('set_renews_1')|safe }}{% if license.expires_at %},
+          {{ t('set_next_renew') }} <b>{{ license.expires_at.strftime('%d/%m/%Y') }}</b>{% endif %}.
+          {{ t('set_renews_2')|safe }}
         </p>
         <form method="POST" action="{{ url_for('cancel_subscription_user') }}"
-              onsubmit="return confirm('Vuoi davvero disdire il rinnovo automatico? Manterrai l&#39;accesso fino alla scadenza.');">
-          <button type="submit" class="btn" style="background:var(--red);color:#fff;">Disdici il rinnovo automatico</button>
+              onsubmit="return confirm('{{ t('set_cancel_confirm') }}');">
+          <button type="submit" class="btn" style="background:var(--red);color:#fff;">{{ t('set_cancel_btn') }}</button>
         </form>
       {% else %}
-        <p class="hint">Su questo account non risulta un rinnovo automatico attivo (es. accesso demo o codice).</p>
+        <p class="hint">{{ t('set_no_sub') }}</p>
       {% endif %}
     </div>
   </main>
@@ -218,20 +209,20 @@
     btn.addEventListener('click', async () => {
       const out = document.getElementById('tgTestResult');
       btn.disabled = true;
-      out.textContent = 'Invio in corso…';
+      out.textContent = '{{ t("test_sending") }}';
       out.className = 'hint';
       try {
         const r = await fetch('{{ url_for("api_telegram_test") }}', { method: 'POST' });
         const d = await r.json();
         if (d.ok) {
-          out.textContent = '✅ Inviato! Controlla Telegram.';
+          out.textContent = '{{ t("test_sent") }}';
           out.style.color = 'var(--green)';
         } else {
           out.textContent = '❌ ' + (d.error || 'Errore');
           out.style.color = 'var(--red)';
         }
       } catch (e) {
-        out.textContent = '❌ Errore di rete';
+        out.textContent = '{{ t("test_neterr") }}';
         out.style.color = 'var(--red)';
       } finally {
         btn.disabled = false;

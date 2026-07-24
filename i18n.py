@@ -178,6 +178,106 @@ TRANSLATIONS = {
     "risk_low": {"it": "Rischio basso", "en": "Low risk"},
     "risk_medium": {"it": "Rischio medio", "en": "Medium risk"},
     "risk_high": {"it": "Rischio alto", "en": "High risk"},
+
+    # --- impostazioni ---
+    "set_title": {"it": "Impostazioni", "en": "Settings"},
+    "set_sub": {"it": "Configura account, exchange, notifiche e strategia — tutto da qui, nessun file da modificare.",
+                "en": "Set up account, exchange, notifications and strategy — all here, no files to edit."},
+    "set_account": {"it": "Account", "en": "Account"},
+    "set_active_plan": {"it": "Piano attivo", "en": "Active plan"},
+    "set_exchange": {"it": "Exchange (collega il tuo conto)", "en": "Exchange (connect your account)"},
+    "set_keys_enc": {"it": "Le chiavi vengono cifrate (AES) prima di essere salvate nel database. Non vengono mai mostrate in chiaro.",
+                     "en": "Keys are encrypted (AES) before being saved in the database. They are never shown in clear text."},
+    "set_kraken_warn": {
+        "it": "🔒 <strong>Importante per la tua sicurezza:</strong> crea la chiave API su "
+              "Kraken <strong>SENZA il permesso di prelievo (\"Withdraw funds\")</strong>. "
+              "Dai solo i permessi di lettura e (se vuoi il trading automatico) di "
+              "creazione ordini. Così, anche nel caso peggiore, nessuno potrà mai "
+              "prelevare i tuoi fondi.",
+        "en": "🔒 <strong>Important for your safety:</strong> create the API key on Kraken "
+              "<strong>WITHOUT the withdrawal permission (\"Withdraw funds\")</strong>. "
+              "Grant only read and (if you want automatic trading) order-creation "
+              "permissions. That way, even in the worst case, no one can ever withdraw "
+              "your funds.",
+    },
+    "set_enter_apikey": {"it": "Inserisci la tua API Key", "en": "Enter your API Key"},
+    "set_enter_secret": {"it": "Inserisci il tuo Secret", "en": "Enter your Secret"},
+    "set_current": {"it": "Attuale", "en": "Current"},
+    "set_leave_blank": {"it": "lascia vuoto per non modificare.", "en": "leave blank to keep it."},
+    "set_saved_blank": {"it": "Salvato ✓ — lascia vuoto per non modificare.", "en": "Saved ✓ — leave blank to keep it."},
+    "set_tg_title": {"it": "Notifiche Telegram", "en": "Telegram notifications"},
+    "set_tg_guide": {"it": "❓ Non sai come si fa? Apri la guida passo-passo",
+                     "en": "❓ Don't know how? Open the step-by-step guide"},
+    "set_tg_s1": {"it": "Apri Telegram e nella barra di ricerca in alto scrivi <b>@BotFather</b>. Apri quello con la spunta blu.",
+                  "en": "Open Telegram and in the top search bar type <b>@BotFather</b>. Open the one with the blue checkmark."},
+    "set_tg_s2": {"it": "Premi <b>Avvia</b> (o scrivi <code>/start</code>), poi scrivi <code>/newbot</code> e premi invio.",
+                  "en": "Press <b>Start</b> (or type <code>/start</code>), then type <code>/newbot</code> and press enter."},
+    "set_tg_s3": {"it": "BotFather ti chiede un <b>nome</b> (quello che vuoi) e poi uno <b>username</b> che deve finire con <code>bot</code> (es. <code>miosegnali_bot</code>).",
+                  "en": "BotFather asks for a <b>name</b> (anything you like) and then a <b>username</b> that must end with <code>bot</code> (e.g. <code>mysignals_bot</code>)."},
+    "set_tg_s4": {"it": "BotFather ti risponde con un <b>Token</b>, una riga tipo <code>123456789:AAE...xYz</code>. <b>Copialo e incollalo</b> nel campo “Token bot Telegram” qui sotto.",
+                  "en": "BotFather replies with a <b>Token</b>, a line like <code>123456789:AAE...xYz</code>. <b>Copy and paste it</b> into the \"Telegram bot Token\" field below."},
+    "set_tg_s5": {"it": "Ora serve il tuo <b>Chat ID</b>. Cerca <b>@userinfobot</b> su Telegram, aprilo e premi <b>Avvia</b>: ti risponde con un numero (“Id: 123456789”). <b>Copia quel numero</b> nel campo “Chat ID”.",
+                  "en": "Now you need your <b>Chat ID</b>. Search <b>@userinfobot</b> on Telegram, open it and press <b>Start</b>: it replies with a number (\"Id: 123456789\"). <b>Copy that number</b> into the \"Chat ID\" field."},
+    "set_tg_s6": {"it": "Cerca il <b>tuo</b> bot (l'username che hai scelto al punto 3) e premi <b>Avvia</b> almeno una volta, altrimenti non può scriverti.",
+                  "en": "Search for <b>your</b> bot (the username you chose in step 3) and press <b>Start</b> at least once, otherwise it can't message you."},
+    "set_tg_s7": {"it": "Premi <b>💾 Salva impostazioni</b> in fondo, poi torna qui e premi <b>“Invia messaggio di prova”</b>. Se ti arriva il messaggio, è tutto collegato! 🎉",
+                  "en": "Press <b>💾 Save settings</b> at the bottom, then come back and press <b>\"Send a test message\"</b>. If the message arrives, everything is connected! 🎉"},
+    "set_tg_token": {"it": "Token bot Telegram", "en": "Telegram bot Token"},
+    "set_tg_token_hint": {"it": "Il codice che ti dà @BotFather (punto 4).", "en": "The code @BotFather gives you (step 4)."},
+    "set_tg_chatid_hint": {"it": "Il numero che ti dà @userinfobot (punto 5).", "en": "The number @userinfobot gives you (step 5)."},
+    "set_tg_test": {"it": "📨 Invia messaggio di prova", "en": "📨 Send a test message"},
+    "set_tg_test_hint": {"it": "Salva prima le impostazioni, poi prova. Il messaggio di prova usa Token e Chat ID già salvati.",
+                         "en": "Save the settings first, then test. The test message uses the already saved Token and Chat ID."},
+    "set_tg_locked": {"it": "Disponibile nei piani Pro, VIP e Lifetime. Aggiorna il piano per abilitare le notifiche.",
+                      "en": "Available on the Pro, VIP and Lifetime plans. Upgrade your plan to enable notifications."},
+    "set_strategy": {"it": "🎯 Strategia", "en": "🎯 Strategy"},
+    "set_strategy_hint": {"it": "Scegli quanto vuoi essere prudente o aggressivo. Imposta in automatico rischio, stop loss e take profit.",
+                          "en": "Choose how cautious or aggressive you want to be. It sets risk, stop loss and take profit automatically."},
+    "set_coins": {"it": "🪙 Crypto da seguire", "en": "🪙 Cryptos to follow"},
+    "set_coins_hint": {"it": "Ricevi i segnali solo per le crypto che scegli. Se non ne selezioni nessuna, le ricevi tutte.",
+                       "en": "Get signals only for the cryptos you choose. If you select none, you get them all."},
+    "set_real": {"it": "⚠️ Trading REALE su Kraken (soldi veri)", "en": "⚠️ REAL trading on Kraken (real money)"},
+    "set_real_hint": {
+        "it": "Se acceso, quando tocchi <b>✅ Investi</b> sul messaggio Telegram il bot "
+              "piazza un ordine <b>vero</b> sul tuo conto Kraken (con lo stop loss e take "
+              "profit della strategia scelta). Servono API Key/Secret Kraken <b>con "
+              "permesso di trading</b>. <b>Si rischiano soldi veri.</b> Inizia piccolo.",
+        "en": "If enabled, when you tap <b>✅ Invest</b> on the Telegram message the bot "
+              "places a <b>real</b> order on your Kraken account (with the stop loss and "
+              "take profit of the chosen strategy). You need Kraken API Key/Secret <b>with "
+              "trading permission</b>. <b>Real money is at risk.</b> Start small.",
+    },
+    "set_real_toggle": {"it": "Attiva il trading reale (parte SPENTO)", "en": "Enable real trading (starts OFF)"},
+    "set_max_order": {"it": "Importo massimo per ordine (€)", "en": "Maximum amount per order (€)"},
+    "set_max_order_hint": {"it": "Tetto di spesa per ogni singolo investimento.", "en": "Spending cap for each individual investment."},
+    "set_advanced": {"it": "🔧 Personalizzazione avanzata (VIP)", "en": "🔧 Advanced customization (VIP)"},
+    "set_advanced_hint": {"it": "Facoltativo: affina i parametri oltre alla strategia scelta sopra. Sovrascrive i valori della strategia.",
+                          "en": "Optional: fine-tune the parameters beyond the strategy above. It overrides the strategy values."},
+    "set_risk_trade": {"it": "Rischio per operazione (%)", "en": "Risk per trade (%)"},
+    "set_fast_ma": {"it": "Media mobile veloce (periodi)", "en": "Fast moving average (periods)"},
+    "set_slow_ma": {"it": "Media mobile lenta (periodi)", "en": "Slow moving average (periods)"},
+    "set_sl": {"it": "Stop loss (%)", "en": "Stop loss (%)"},
+    "set_tp": {"it": "Take profit (%)", "en": "Take profit (%)"},
+    "set_engine_on": {"it": "Motore di trading attivo", "en": "Trading engine active"},
+    "set_engine_hint": {"it": "Se disattivato, il bot smette di aprire nuove posizioni per il tuo account.",
+                        "en": "If disabled, the bot stops opening new positions for your account."},
+    "set_save": {"it": "💾 Salva impostazioni", "en": "💾 Save settings"},
+    "set_subscription": {"it": "💳 Abbonamento", "en": "💳 Subscription"},
+    "set_lifetime": {"it": "Hai il piano <b>Lifetime</b>: pagamento unico, nessun rinnovo. L'accesso non scade.",
+                     "en": "You have the <b>Lifetime</b> plan: one-time payment, no renewal. Access never expires."},
+    "set_renews_1": {"it": "Il tuo abbonamento si <b>rinnova automaticamente</b>",
+                     "en": "Your subscription <b>renews automatically</b>"},
+    "set_next_renew": {"it": "prossimo rinnovo intorno al", "en": "next renewal around"},
+    "set_renews_2": {"it": "Puoi disdire quando vuoi: <b>mantieni l'accesso fino alla scadenza</b> già pagata e poi non ti verrà più addebitato nulla.",
+                     "en": "You can cancel anytime: <b>you keep access until the end</b> of the period already paid, and then nothing more is charged."},
+    "set_cancel_btn": {"it": "Disdici il rinnovo automatico", "en": "Cancel auto-renewal"},
+    "set_cancel_confirm": {"it": "Vuoi davvero disdire il rinnovo automatico? Manterrai l&#39;accesso fino alla scadenza.",
+                           "en": "Do you really want to cancel auto-renewal? You'll keep access until expiry."},
+    "set_no_sub": {"it": "Su questo account non risulta un rinnovo automatico attivo (es. accesso demo o codice).",
+                   "en": "This account has no active auto-renewal (e.g. demo or code access)."},
+    "test_sending": {"it": "Invio in corso…", "en": "Sending…"},
+    "test_sent": {"it": "✅ Inviato! Controlla Telegram.", "en": "✅ Sent! Check Telegram."},
+    "test_neterr": {"it": "❌ Errore di rete", "en": "❌ Network error"},
 }
 
 
