@@ -1,14 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Da dove arrivi? — VCriptoV{% endblock %}
+{% block title %}{{ t('ci_last') }} — VCriptoV{% endblock %}
 
 {% block content %}
 <div class="auth-card">
   <div class="brand-row">
     <div class="brand-logo">📣</div>
-    <div class="brand-name">Ultima cosa!</div>
+    <div class="brand-name">{{ t('ci_last') }}</div>
   </div>
-  <p class="lead">Da quale influencer hai conosciuto VCriptoV? Aiutaci a
-  capire da dove arrivi.</p>
+  <p class="lead">{{ t('ci_lead') }}</p>
 
   <form method="POST" action="{{ url_for('choose_influencer') }}">
     <div class="influencer-grid">
@@ -21,7 +20,7 @@
       {% endfor %}
     </div>
     <button type="submit" class="btn btn-primary btn-block" style="margin-top:16px;">
-      Entra nella dashboard →
+      {{ t('ci_enter') }}
     </button>
   </form>
 </div>

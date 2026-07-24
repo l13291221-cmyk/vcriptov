@@ -5,35 +5,30 @@
 <div class="auth-card">
   <div class="brand-row">
     <div class="brand-logo">{% if demo %}🧪{% else %}✅{% endif %}</div>
-    <div class="brand-name">{% if demo %}Codice demo generato{% else %}Pagamento confermato{% endif %}</div>
+    <div class="brand-name">{% if demo %}{{ t('co_title_demo') }}{% else %}{{ t('co_title_ok') }}{% endif %}</div>
   </div>
   {% if trial %}
   <div class="disclaimer" style="margin-bottom:14px;border-color:rgba(34,201,138,.4);background:rgba(34,201,138,.06);">
-    🎁 <strong>Prova gratuita di 3 giorni attivata!</strong> Accesso completo senza
-    pagamento. Alla scadenza, scegli un piano per continuare.
+    {{ t('co_trial')|safe }}
   </div>
   {% elif demo %}
   <div class="disclaimer" style="margin-bottom:14px;">
-    🧪 <strong>Modalità DEMO:</strong> nessun pagamento reale è stato effettuato.
-    Codice generato per provare il sito. Per incassare pagamenti veri, inserisci
-    una vera Stripe Secret Key (<code>sk_test_…</code> o <code>sk_live_…</code>).
+    {{ t('co_demo')|safe }}
   </div>
   {% endif %}
-  <p class="lead">Piano <strong>{{ plan.name }}</strong> attivato per
-  <strong>{{ email }}</strong>. Ecco il tuo codice di attivazione (lo abbiamo
-  anche "inviato" alla tua email):</p>
+  <p class="lead">{{ t('co_activated_1') }} <strong>{{ plan.name }}</strong> {{ t('co_activated_2') }}
+  <strong>{{ email }}</strong>{{ t('co_activated_3') }}</p>
 
   <div class="license-box" id="key">{{ license_key }}</div>
 
-  <button class="btn btn-ghost btn-block" onclick="copyKey()" type="button">📋 Copia codice</button>
+  <button class="btn btn-ghost btn-block" onclick="copyKey()" type="button">{{ t('co_copy') }}</button>
 
   <a href="{{ url_for('activate') }}" class="btn btn-primary btn-block" style="margin-top:12px;">
-    Inserisci il codice e accedi →
+    {{ t('co_enter') }}
   </a>
 
   <div class="disclaimer">
-    Conserva questo codice: è legato al tuo piano <strong>{{ plan.name }}</strong>
-    e alla tua email. Serve per sbloccare la dashboard.
+    {{ t('co_keep') }}
   </div>
 </div>
 
@@ -41,8 +36,8 @@
   function copyKey() {
     const t = document.getElementById('key').textContent.trim();
     navigator.clipboard.writeText(t).then(() => {
-      event.target.textContent = '✓ Copiato!';
-      setTimeout(() => event.target.textContent = '📋 Copia codice', 1800);
+      event.target.textContent = '{{ t("co_copied") }}';
+      setTimeout(() => event.target.textContent = '{{ t("co_copy") }}', 1800);
     });
   }
 </script>

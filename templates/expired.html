@@ -1,21 +1,19 @@
 {% extends "base.html" %}
-{% block title %}Abbonamento scaduto — VCriptoV{% endblock %}
+{% block title %}{{ t('exp_title') }} — VCriptoV{% endblock %}
 
 {% block content %}
 <div class="auth-card">
   <div class="brand-row">
     <div class="brand-logo">⌛</div>
-    <div class="brand-name">Abbonamento scaduto</div>
+    <div class="brand-name">{{ t('exp_title') }}</div>
   </div>
-  <p class="lead">Il tuo abbonamento <strong>{{ plan.name }}</strong> è scaduto,
-  quindi l'accesso alla dashboard è bloccato. Per continuare a usare il bot,
-  rinnova scegliendo di nuovo un piano.</p>
+  <p class="lead">{{ t('exp_lead_1') }} <strong>{{ plan.name }}</strong> {{ t('exp_lead_2') }}</p>
 
-  <a href="{{ url_for('index') }}" class="btn btn-primary btn-block">Rinnova l'abbonamento →</a>
-  <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-block" style="margin-top:10px;">Esci</a>
+  <a href="{{ url_for('index') }}" class="btn btn-primary btn-block">{{ t('exp_renew') }}</a>
+  <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-block" style="margin-top:10px;">{{ t('nav_logout') }}</a>
 
   <div class="disclaimer">
-    Se pensi sia un errore (hai già pagato il rinnovo), contatta l'assistenza:
+    {{ t('exp_help') }}
     <br>📧 assistenza.vcriptov@gmail.com
   </div>
 </div>
