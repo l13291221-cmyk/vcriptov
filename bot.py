@@ -72,6 +72,7 @@ class TradingEngine:
         for lic in licenses:
             self._process_license(lic, prices)
             self._update_signal_outcomes(lic, prices)
+            self._monitor_open_investments(lic, prices)
             self._check_price_alerts(lic, prices)
             self._maybe_expiry_reminder(lic)
             self._maybe_weekly_summary(lic)
@@ -96,6 +97,67 @@ class TradingEngine:
                 sig.outcome = "win"
             elif price <= sl:
                 sig.outcome = "loss"
+
+    def _monitor_open_investments(self, lic, prices):
+        """GUARDIANO DELLA POSIZIONE. Dopo che l'utente tocca "Investi" e l'ordine
+        parte (segnale 'executed'), il bot sorveglia quella posizione e avvisa su
+        Telegram dicendo cosa fare:
+          • se sta andando GIÙ forte (vicino allo stop, o in perdita con trend
+            girato al ribasso) → suggerisce di CHIUDERE per limitare la perdita;
+          • se è già MOLTO in guadagno (vicino all'obiettivo) → suggerisce di
+            INCASSARE.
+        Manda al massimo un avviso per tipo, per non intasare la chat."""
+        settings = lic.settings
+        if not (settings and self._telegram_ready(lic, settings)):
+            return
+        open_sigs = Signal.query.filter(
+            Signal.license_id == lic.id,
+            Signal.status == "executed",
+            Signal.outcome.is_(None),
+        ).all()
+        if not open_sigs:
+            return
+        token = decrypt(settings.telegram_token_enc)
+        chat = settings.telegram_chat_id
+        fast = settings.fast_ma or 5
+        slow = settings.slow_ma or 20
+        for sig in open_sigs:
+            price = prices.get(sig.symbol)
+            if not price or not sig.ref_price:
+                continue
+            change = (price / sig.ref_price - 1.0) * 100.0
+            sl = sig.stop_loss_pct or 8.0
+            tp = sig.take_profit_pct or 15.0
+            coin = sig.symbol.replace("/USDT", "")
+            f = market.sma(sig.symbol, fast)
+            s = market.sma(sig.symbol, slow)
+            trend_down = (f is not None and s is not None and f < s)
+
+            # Perdita seria: vicino allo stop, oppure già in rosso con trend debole.
+            if not sig.warn_loss_sent and (change <= -sl * 0.6 or (change <= -sl * 0.35 and trend_down)):
+                send_telegram(
+                    token, chat,
+                    f"🔻 <b>Attenzione su {coin}</b>\n"
+                    f"La posizione che hai aperto è a <b>{change:+.1f}%</b> "
+                    f"(stop loss a −{sl:.0f}%).\n"
+                    f"Il bot vede che <b>sta scendendo</b> e l'andamento è debole: "
+                    f"forse non vale la pena aspettare.\n"
+                    f"👉 Valuta di <b>chiudere ora per limitare la perdita</b>.\n\n"
+                    f"⚠️ <i>Non è consulenza finanziaria: decidi sempre tu.</i>",
+                )
+                sig.warn_loss_sent = True
+
+            # Molto in guadagno: vicino all'obiettivo → valuta di incassare.
+            elif not sig.warn_profit_sent and change >= tp * 0.75:
+                send_telegram(
+                    token, chat,
+                    f"🚀 <b>Bene su {coin}!</b>\n"
+                    f"La tua posizione è a <b>{change:+.1f}%</b> (obiettivo +{tp:.0f}%).\n"
+                    f"Sei <b>molto in guadagno</b>: potrebbe essere il momento di "
+                    f"<b>incassare</b> una parte o tutto, prima che il prezzo torni indietro.\n\n"
+                    f"⚠️ <i>Non è consulenza finanziaria: decidi sempre tu.</i>",
+                )
+                sig.warn_profit_sent = True
 
     def _check_price_alerts(self, lic, prices):
         settings = lic.settings

@@ -172,6 +172,8 @@ class Signal(db.Model):
     result = db.Column(db.Text, nullable=True)             # esito ordine o messaggio d'errore
     telegram_message_id = db.Column(db.String(32), nullable=True)
     outcome = db.Column(db.String(8), nullable=True)       # win / loss (track record); None = ancora aperto
+    warn_loss_sent = db.Column(db.Boolean, default=False)  # avviso "sta andando in perdita" già mandato
+    warn_profit_sent = db.Column(db.Boolean, default=False)  # avviso "sei molto in guadagno" già mandato
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     resolved_at = db.Column(db.DateTime, nullable=True)
 

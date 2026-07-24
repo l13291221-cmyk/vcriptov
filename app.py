@@ -118,8 +118,13 @@ def ensure_schema():
                 if col not in existing_l:
                     conn.execute(text(f"ALTER TABLE licenses ADD COLUMN {col} {ddl}"))
             existing_sig = {row[1] for row in conn.execute(text("PRAGMA table_info(signals)"))}
-            if "outcome" not in existing_sig:
-                conn.execute(text("ALTER TABLE signals ADD COLUMN outcome VARCHAR(8)"))
+            for col, ddl in {
+                "outcome": "VARCHAR(8)",
+                "warn_loss_sent": "BOOLEAN DEFAULT 0",
+                "warn_profit_sent": "BOOLEAN DEFAULT 0",
+            }.items():
+                if col not in existing_sig:
+                    conn.execute(text(f"ALTER TABLE signals ADD COLUMN {col} {ddl}"))
             existing_i = {row[1] for row in conn.execute(text("PRAGMA table_info(influencers)"))}
             for col, ddl in {
                 "password_enc": "TEXT",
