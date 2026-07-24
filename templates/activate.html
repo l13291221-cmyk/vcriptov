@@ -1,26 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Attiva la licenza — VCriptoV{% endblock %}
+{% block title %}{{ t('activate_title') }} — VCriptoV{% endblock %}
 
 {% block content %}
 <div class="auth-card">
   <div class="brand-row">
     <div class="brand-logo">🔑</div>
-    <div class="brand-name">Sblocca la dashboard</div>
+    <div class="brand-name">{{ t('activate_title') }}</div>
   </div>
-  <p class="lead">Inserisci il codice di attivazione ricevuto dopo l'acquisto.</p>
+  <p class="lead">{{ t('activate_lead') }}</p>
 
   <form method="POST" action="{{ url_for('activate') }}">
     <div class="field">
-      <label>Codice di attivazione</label>
+      <label>{{ t('activate_ph') }}</label>
       <input type="text" name="license_key" placeholder="VIP-XXXX-XXXX-XXXX-XXXX"
              autocomplete="off" required style="text-transform:uppercase;letter-spacing:1px;" />
-      <div class="hint">Formato: PREFISSO-XXXX-XXXX-XXXX-XXXX</div>
+      <div class="hint">{% if lang == 'en' %}Format: PREFIX-XXXX-XXXX-XXXX-XXXX{% else %}Formato: PREFISSO-XXXX-XXXX-XXXX-XXXX{% endif %}</div>
     </div>
-    <button type="submit" class="btn btn-primary btn-block">Sblocca →</button>
+    <button type="submit" class="btn btn-primary btn-block">{{ t('activate_btn') }}</button>
   </form>
 
   <p class="hint" style="margin-top:18px;text-align:center;">
-    Non hai un codice? <a href="{{ url_for('index') }}">Scegli un piano →</a>
+    <a href="{{ url_for('index') }}">{{ t('back_to_plans') }}</a>
   </p>
 </div>
 {% endblock %}

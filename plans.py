@@ -71,6 +71,7 @@ PLANS = {
         "price_eur": 10,
         "old_price_eur": None,
         "period": "mese",
+        "period_en": "month",
         "interval": "month",
         "days": 30,
         "lifetime": False,
@@ -84,6 +85,11 @@ PLANS = {
             "Segnali automatizzati su BTC ed ETH",
             "Storico operazioni e P&L",
         ],
+        "features_en": [
+            "Basic dashboard access",
+            "Automated signals on BTC and ETH",
+            "Trade history and P&L",
+        ],
     },
     "pro": {
         "id": "pro",
@@ -91,6 +97,7 @@ PLANS = {
         "price_eur": 25,
         "old_price_eur": None,
         "period": "mese",
+        "period_en": "month",
         "interval": "month",
         "days": 30,
         "lifetime": False,
@@ -105,6 +112,12 @@ PLANS = {
             "Notifiche Telegram",
             "Tutto ciò che è incluso in Starter",
         ],
+        "features_en": [
+            "Full access to all cryptos",
+            "News / sentiment filter for high-risk markets",
+            "Telegram notifications",
+            "Everything included in Starter",
+        ],
     },
     "vip": {
         "id": "vip",
@@ -112,6 +125,7 @@ PLANS = {
         "price_eur": 45,
         "old_price_eur": 60,
         "period": "mese",
+        "period_en": "month",
         "interval": "month",
         "days": 30,
         "lifetime": False,
@@ -125,6 +139,11 @@ PLANS = {
             "Parametri di strategia / rischio personalizzabili",
             "Segnali prioritari",
         ],
+        "features_en": [
+            "All Pro features",
+            "Customizable strategy / risk parameters",
+            "Priority signals",
+        ],
     },
     "annuale": {
         "id": "annuale",
@@ -132,6 +151,7 @@ PLANS = {
         "price_eur": 540,          # 12 × 45€, senza sconto: paghi una volta l'anno
         "old_price_eur": None,
         "period": "anno",
+        "period_en": "year",
         "interval": "year",
         "days": 365,
         "lifetime": False,
@@ -145,6 +165,11 @@ PLANS = {
             "Paghi una sola volta l'anno (nessun addebito mensile)",
             "12 mesi di accesso senza pensieri",
         ],
+        "features_en": [
+            "All VIP features",
+            "Pay once a year (no monthly charge)",
+            "12 months of hassle-free access",
+        ],
     },
     "lifetime": {
         "id": "lifetime",
@@ -152,6 +177,7 @@ PLANS = {
         "price_eur": 200,
         "old_price_eur": None,
         "period": "una tantum",
+        "period_en": "one-time",
         "lifetime": True,
         "symbols": ALL_SYMBOLS,
         "sentiment": True,
@@ -163,6 +189,11 @@ PLANS = {
             "Nessun canone mensile",
             "Aggiornamenti inclusi",
         ],
+        "features_en": [
+            "Lifetime access to all VIP features",
+            "No monthly fee",
+            "Updates included",
+        ],
     },
     "trial": {
         "id": "trial",
@@ -170,6 +201,7 @@ PLANS = {
         "price_eur": 0,
         "old_price_eur": None,
         "period": "3 giorni",
+        "period_en": "3 days",
         "lifetime": False,
         "trial": True,
         "trial_days": 3,
@@ -183,6 +215,12 @@ PLANS = {
             "Accesso completo a tutte le crypto",
             "Notifiche Telegram incluse",
             "Nessun pagamento richiesto",
+        ],
+        "features_en": [
+            "Try EVERYTHING free for 3 days",
+            "Full access to all cryptos",
+            "Telegram notifications included",
+            "No payment required",
         ],
     },
 }

@@ -267,6 +267,10 @@ canvas { max-width: 100%; }
 .adm-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
 .adm-filters { display: flex; gap: 6px; }
 .adm-filter.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+/* Selettore lingua IT/EN */
+.lang-switch { display: inline-flex; gap: 2px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.lang-switch a { padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--muted); text-decoration: none; }
+.lang-switch a.on { background: var(--brand); color: #fff; }
 .risk-banner {
   background: rgba(255,207,92,.08); border: 1px solid rgba(255,207,92,.3);
   border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #e6d6a8;

@@ -40,6 +40,8 @@ from admin import (
 from bot import init_engine
 from config import Config
 from exchange_account import account_snapshot
+from i18n import LANG_COOKIE, normalize_lang
+from i18n import t as translate
 from licensing import generate_key, normalize, verify_checksum
 from market import MARKET_EXCHANGE, market
 from notify import send_telegram
@@ -329,10 +331,20 @@ def register_routes(app: Flask):
 
     @app.context_processor
     def inject_globals():
+        lang = normalize_lang(request.cookies.get(LANG_COOKIE))
         return {
             "now": datetime.utcnow(), "plans": PLANS, "asset_v": ASSET_VERSION,
             "is_admin": session.get("is_admin", False),
+            "lang": lang,
+            "t": lambda key: translate(lang, key),
         }
+
+    @app.route("/lang/<code>")
+    def set_language(code):
+        """Cambia lingua (it/en) salvandola in un cookie e torna alla pagina di prima."""
+        resp = redirect(request.referrer or url_for("index"))
+        resp.set_cookie(LANG_COOKIE, normalize_lang(code), max_age=60 * 60 * 24 * 365, samesite="Lax")
+        return resp
 
     # ---------- Paywall / scelta piano ----------
     @app.route("/")

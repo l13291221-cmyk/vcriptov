@@ -1,30 +1,33 @@
 {% extends "base.html" %}
-{% block title %}VCriptoV — Scegli il tuo piano{% endblock %}
+{% block title %}VCriptoV — {% if lang == 'en' %}Choose your plan{% else %}Scegli il tuo piano{% endif %}{% endblock %}
 
 {% block content %}
 <div class="auth-wrap">
-  <button type="button" class="support-btn" onclick="toggleSupport()">🎧 Assistenza</button>
+  <button type="button" class="support-btn" onclick="toggleSupport()">{{ t('nav_support') }}</button>
   <div class="top-right-btns">
-    <a href="{{ url_for('influencer_login') }}" class="creator-btn">📣 Influencer</a>
-    <a href="{{ url_for('admin_login') }}" class="creator-btn">🔐 Area creatore</a>
+    <span class="lang-switch">
+      <a href="{{ url_for('set_language', code='it') }}" class="{% if lang == 'it' %}on{% endif %}">IT</a>
+      <a href="{{ url_for('set_language', code='en') }}" class="{% if lang == 'en' %}on{% endif %}">EN</a>
+    </span>
+    <a href="{{ url_for('influencer_login') }}" class="creator-btn">{{ t('nav_influencer') }}</a>
+    <a href="{{ url_for('admin_login') }}" class="creator-btn">{{ t('nav_creator') }}</a>
   </div>
   <div class="brand-row">
     <div class="brand-logo brand-logo--img"><img src="{{ url_for('static', filename='logo.png') }}?v={{ asset_v }}" alt="VCriptoV" /></div>
     <div>
       <div class="brand-name">VCriptoV</div>
-      <div class="hint">Trading bot automatizzato per criptovalute</div>
+      <div class="hint">{{ t('tagline') }}</div>
     </div>
   </div>
-  <h1>Sblocca il tuo bot di trading</h1>
-  <p class="lead">Scegli un piano per attivare la dashboard, i segnali automatici e il
-  motore di trading in background. Riceverai subito un <strong>codice di attivazione</strong>
-  da inserire per accedere. <a href="{{ url_for('how_it_works') }}">📘 Come funziona?</a></p>
+  <h1>{{ t('hero_title') }}</h1>
+  <p class="lead">{{ t('hero_lead') }}<strong>{{ t('hero_code') }}</strong>{{ t('hero_lead_end') }}
+  <a href="{{ url_for('how_it_works') }}">{{ t('nav_how') }}</a></p>
 
   <form method="POST" action="{{ url_for('checkout') }}" id="planForm">
     <div class="plan-grid">
       {% for p in plans %}
       <label class="plan-card {% if p.id == 'vip' %}featured{% endif %}" data-plan="{{ p.id }}">
-        {% if p.id == 'vip' %}<span class="plan-badge">PIÙ SCELTO</span>{% endif %}
+        {% if p.id == 'vip' %}<span class="plan-badge">{{ t('badge_popular') }}</span>{% endif %}
         <input type="radio" name="plan" value="{{ p.id }}" hidden {% if p.id == 'pro' %}checked{% endif %} />
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="radio-dot"></span>
@@ -33,35 +36,31 @@
         <div class="plan-price">
           {{ p.price_eur }}€
           {% if p.old_price_eur %}<span class="plan-old">{{ p.old_price_eur }}€</span>{% endif %}
-          <small>/ {{ p.period }}</small>
+          <small>/ {% if lang == 'en' %}{{ p.period_en or p.period }}{% else %}{{ p.period }}{% endif %}</small>
         </div>
         <div class="plan-period">
-          {% if p.lifetime %}Pagamento unico, accesso a vita{% else %}Rinnovo mensile, disdici quando vuoi{% endif %}
+          {% if p.lifetime %}{{ t('period_lifetime') }}{% else %}{{ t('period_recurring') }}{% endif %}
         </div>
         <ul class="plan-features">
-          {% for f in p.features %}<li>{{ f }}</li>{% endfor %}
+          {% for f in (p.features_en if lang == 'en' and p.features_en else p.features) %}<li>{{ f }}</li>{% endfor %}
         </ul>
       </label>
       {% endfor %}
     </div>
 
     <div class="checkout-bar">
-      <input type="email" name="email" placeholder="La tua email (es. mario@rossi.it)" required />
-      <input type="text" name="discount_code" placeholder="Codice sconto (facoltativo)" autocomplete="off" />
-      <button type="submit" class="btn btn-primary">Procedi e genera il codice →</button>
+      <input type="email" name="email" placeholder="{{ t('email_ph') }}" required />
+      <input type="text" name="discount_code" placeholder="{{ t('discount_ph') }}" autocomplete="off" />
+      <button type="submit" class="btn btn-primary">{{ t('proceed') }}</button>
     </div>
     <div class="disclaimer">
-      ⚠️ <strong>Avviso:</strong> software dimostrativo. Il motore esegue trading
-      I segnali del bot sono <strong>analisi automatiche non accurate al 100%</strong>
-      e <strong>non costituiscono consulenza finanziaria</strong>: controlla sempre
-      di persona ogni investimento e non affidarti ciecamente al bot. Investendo
-      rischi il tuo capitale. I pagamenti sono gestiti da <strong>Stripe</strong>.
+      {{ t('disclaimer')|safe }}
     </div>
   </form>
 
   {% if reviews %}
   <div class="testimonials">
-    <h2 style="margin-top:34px;">⭐ Cosa dicono i clienti</h2>
+    <h2 style="margin-top:34px;">{{ t('testimonials') }}</h2>
     <div class="review-grid">
       {% for r in reviews %}
       <div class="review-card">
@@ -74,8 +73,8 @@
   {% endif %}
 
   <p class="hint" style="margin-top:22px;">
-    Hai già un codice? <a href="{{ url_for('activate') }}">Attiva qui →</a>
-    · <a href="{{ url_for('how_it_works') }}">Come funziona</a>
+    {{ t('have_code') }} <a href="{{ url_for('activate') }}">{{ t('activate_here') }}</a>
+    · <a href="{{ url_for('how_it_works') }}">{{ t('nav_how') }}</a>
   </p>
 </div>
 
