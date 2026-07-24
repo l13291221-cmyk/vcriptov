@@ -131,6 +131,7 @@ def ensure_schema():
                 "password_enc": "TEXT",
                 "discount_code": "VARCHAR(60)",
                 "discount_pct": "FLOAT DEFAULT 0",
+                "discount_expires": "DATE",
             }.items():
                 if col not in existing_i:
                     conn.execute(text(f"ALTER TABLE influencers ADD COLUMN {col} {ddl}"))
@@ -397,6 +398,9 @@ def register_routes(app: Flask):
             if not inf_match:
                 flash("Codice sconto non valido.", "error")
                 return redirect(url_for("index"))
+            if inf_match.discount_expires and inf_match.discount_expires < datetime.utcnow().date():
+                flash("Questo codice sconto è scaduto.", "error")
+                return redirect(url_for("index"))
         disc = max(0.0, min(inf_match.discount_pct or 0.0, 100.0)) if inf_match else 0.0
 
         def attribute(lic):
@@ -453,7 +457,7 @@ def register_routes(app: Flask):
             "unit_amount": max(cents, 0),
         }
         if not plan["lifetime"]:
-            price_data["recurring"] = {"interval": "month"}
+            price_data["recurring"] = {"interval": plan.get("interval", "month")}
 
         try:
             checkout_session = stripe.checkout.Session.create(
@@ -511,7 +515,7 @@ def register_routes(app: Flask):
             lic.stripe_subscription_id = sub_id
         # Piani mensili: scadenza tra ~31 giorni (i rinnovi la estendono via webhook).
         if not get_plan(lic.plan)["lifetime"]:
-            lic.expires_at = datetime.utcnow() + timedelta(days=SUBSCRIPTION_DAYS + 1)
+            lic.expires_at = datetime.utcnow() + timedelta(days=get_plan(lic.plan).get("days", SUBSCRIPTION_DAYS) + 1)
         db.session.commit()
         send_activation_email(lic.email, get_plan(lic.plan)["name"], lic.key)
 
@@ -578,7 +582,7 @@ def register_routes(app: Flask):
                     if obj.get("subscription"):
                         lic.stripe_subscription_id = obj.get("subscription")
                     if not get_plan(lic.plan)["lifetime"]:
-                        lic.expires_at = datetime.utcnow() + timedelta(days=SUBSCRIPTION_DAYS + 1)
+                        lic.expires_at = datetime.utcnow() + timedelta(days=get_plan(lic.plan).get("days", SUBSCRIPTION_DAYS) + 1)
                     db.session.commit()
                     send_activation_email(lic.email, get_plan(lic.plan)["name"], lic.key)
             return "", 200
@@ -588,7 +592,7 @@ def register_routes(app: Flask):
             lic = License.query.filter_by(stripe_subscription_id=sub_id).first() if sub_id else None
             if lic:
                 base = max(lic.expires_at or datetime.utcnow(), datetime.utcnow())
-                lic.expires_at = base + timedelta(days=SUBSCRIPTION_DAYS + 1)
+                lic.expires_at = base + timedelta(days=get_plan(lic.plan).get("days", SUBSCRIPTION_DAYS) + 1)
                 lic.active = True
                 lic.expiry_reminder_sent = False  # rinnovato: potrà riavvisare al prossimo giro
                 db.session.commit()
@@ -669,9 +673,10 @@ def register_routes(app: Flask):
             if not lic.activated:
                 lic.activated = True
                 lic.activated_at = datetime.utcnow()
-            # Piani mensili: parte il conto alla rovescia dei 30 giorni.
+            # Piani a tempo: parte il conto alla rovescia (30 giorni mensile, 365 annuale).
             if not get_plan(lic.plan)["lifetime"] and lic.expires_at is None:
-                lic.expires_at = datetime.utcnow() + timedelta(days=SUBSCRIPTION_DAYS)
+                lic.expires_at = datetime.utcnow() + timedelta(
+                    days=get_plan(lic.plan).get("days", SUBSCRIPTION_DAYS))
             # Non chiedo la recensione nel mese di iscrizione (parte dal successivo).
             if lic.last_review_month is None:
                 lic.last_review_month = datetime.utcnow().strftime("%Y-%m")
@@ -855,7 +860,8 @@ def register_routes(app: Flask):
         # Nome + password (decifrata) per la tabella accessi influencer.
         inf_access = [
             {"slot": i.slot, "name": i.name, "password": decrypt(i.password_enc),
-             "code": i.discount_code or "", "pct": i.discount_pct or 0}
+             "code": i.discount_code or "", "pct": i.discount_pct or 0,
+             "expires": i.discount_expires.strftime("%Y-%m-%d") if i.discount_expires else ""}
             for i in inf_objs
         ]
         # Escludo gli account di servizio (creatore + anteprime influencer).
@@ -1022,6 +1028,14 @@ def register_routes(app: Flask):
                 inf.discount_pct = max(0.0, min(float(request.form.get(f"pct_{slot}", 0) or 0), 100.0))
             except (ValueError, TypeError):
                 pass
+            exp_raw = (request.form.get(f"expires_{slot}") or "").strip()
+            if exp_raw:
+                try:
+                    inf.discount_expires = datetime.strptime(exp_raw, "%Y-%m-%d").date()
+                except ValueError:
+                    pass
+            else:
+                inf.discount_expires = None  # campo vuoto = il codice non scade
         db.session.commit()
         flash("Influencer aggiornati (nomi, password, codici sconto).", "success")
         return redirect(url_for("admin"))

@@ -149,6 +149,7 @@ class Influencer(db.Model):
     password_enc = db.Column(db.Text, nullable=True)  # password d'accesso, cifrata
     discount_code = db.Column(db.String(60), nullable=True)   # codice sconto dell'influencer
     discount_pct = db.Column(db.Float, default=0.0)          # % di sconto del codice
+    discount_expires = db.Column(db.Date, nullable=True)     # scadenza del codice (vuoto = non scade)
 
 
 class Signal(db.Model):

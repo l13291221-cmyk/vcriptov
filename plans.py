@@ -71,6 +71,8 @@ PLANS = {
         "price_eur": 10,
         "old_price_eur": None,
         "period": "mese",
+        "interval": "month",
+        "days": 30,
         "lifetime": False,
         "symbols": ["BTC/USDT", "ETH/USDT"],
         "sentiment": False,
@@ -89,6 +91,8 @@ PLANS = {
         "price_eur": 25,
         "old_price_eur": None,
         "period": "mese",
+        "interval": "month",
+        "days": 30,
         "lifetime": False,
         "symbols": ALL_SYMBOLS,
         "sentiment": True,
@@ -108,6 +112,8 @@ PLANS = {
         "price_eur": 45,
         "old_price_eur": 60,
         "period": "mese",
+        "interval": "month",
+        "days": 30,
         "lifetime": False,
         "symbols": ALL_SYMBOLS,
         "sentiment": True,
@@ -118,6 +124,26 @@ PLANS = {
             "Tutte le funzioni Pro",
             "Parametri di strategia / rischio personalizzabili",
             "Segnali prioritari",
+        ],
+    },
+    "annuale": {
+        "id": "annuale",
+        "name": "VIP Annuale",
+        "price_eur": 540,          # 12 × 45€, senza sconto: paghi una volta l'anno
+        "old_price_eur": None,
+        "period": "anno",
+        "interval": "year",
+        "days": 365,
+        "lifetime": False,
+        "symbols": ALL_SYMBOLS,
+        "sentiment": True,
+        "telegram": True,
+        "custom_strategy": True,
+        "priority_signals": True,
+        "features": [
+            "Tutte le funzioni VIP",
+            "Paghi una sola volta l'anno (nessun addebito mensile)",
+            "12 mesi di accesso senza pensieri",
         ],
     },
     "lifetime": {
@@ -162,7 +188,7 @@ PLANS = {
 }
 
 # Ordine di visualizzazione nel paywall (la prova gratuita per prima).
-PLAN_ORDER = ["trial", "starter", "pro", "vip", "lifetime"]
+PLAN_ORDER = ["trial", "starter", "pro", "vip", "annuale", "lifetime"]
 
 
 # Strategie predefinite: impostano medie mobili, rischio, stop-loss e take-profit.

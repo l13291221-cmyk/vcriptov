@@ -69,12 +69,13 @@
     <div class="panel">
       <div class="panel-head"><h2>Influencer: accessi e codici sconto</h2></div>
       <p class="hint">Per ogni influencer: <b>nome</b> e <b>password</b> (per entrare da “📣 Influencer”),
-      più un <b>codice sconto</b> e la <b>percentuale</b>. Chi usa quel codice al pagamento ottiene lo
-      sconto e viene attribuito a quell'influencer. Per togliere l'accesso, cambia la password.</p>
+      più un <b>codice sconto</b>, la <b>percentuale</b> e una <b>data di scadenza</b> facoltativa
+      (dopo quella data il codice non funziona più; lascia vuoto per non farlo scadere mai).
+      Chi usa quel codice al pagamento ottiene lo sconto e viene attribuito a quell'influencer.</p>
       <form method="POST" action="{{ url_for('save_influencers') }}">
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr><th>#</th><th>Nome</th><th>Password</th><th>Codice sconto</th><th>% sconto</th></tr></thead>
+            <thead><tr><th>#</th><th>Nome</th><th>Password</th><th>Codice sconto</th><th>% sconto</th><th>Scadenza codice</th></tr></thead>
             <tbody>
               {% for i in inf_access %}
               <tr>
@@ -83,6 +84,7 @@
                 <td><input type="text" name="password_{{ i.slot }}" value="{{ i.password }}" placeholder="(nessuna)" class="adm-in" /></td>
                 <td><input type="text" name="code_{{ i.slot }}" value="{{ i.code }}" placeholder="es. MARIO10" class="adm-in" /></td>
                 <td><input type="number" name="pct_{{ i.slot }}" value="{{ i.pct }}" min="0" max="100" step="1" class="adm-in" style="max-width:90px;" /></td>
+                <td><input type="date" name="expires_{{ i.slot }}" value="{{ i.expires }}" class="adm-in" style="max-width:160px;" title="Vuoto = il codice non scade" /></td>
               </tr>
               {% endfor %}
             </tbody>
