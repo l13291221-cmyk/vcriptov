@@ -592,3 +592,7 @@ def init_engine(app) -> TradingEngine:
     if engine is None:
         engine = TradingEngine(app)
     return engine
+
+
+def get_engine() -> TradingEngine | None:
+    return engine

@@ -271,6 +271,13 @@ canvas { max-width: 100%; }
 .lang-switch { display: inline-flex; gap: 2px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .lang-switch a { padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--muted); text-decoration: none; }
 .lang-switch a.on { background: var(--brand); color: #fff; }
+/* Pagina stato del servizio */
+.status-list { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.status-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-soft); }
+.status-name { font-weight: 700; flex: 1; }
+.status-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.status-dot.ok { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.status-dot.ko { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
 .risk-banner {
   background: rgba(255,207,92,.08); border: 1px solid rgba(255,207,92,.3);
   border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #e6d6a8;

@@ -19,6 +19,7 @@ import stripe
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import (
     Flask,
+    Response,
     abort,
     flash,
     jsonify,
@@ -37,7 +38,7 @@ from admin import (
     set_admin_password,
     verify_reset_code,
 )
-from bot import init_engine
+from bot import get_engine, init_engine
 from config import Config
 from exchange_account import account_snapshot
 from i18n import LANG_COOKIE, normalize_lang
@@ -1120,6 +1121,54 @@ def register_routes(app: Flask):
             else:
                 flash(f"Utente {lic.email} riammesso.", "success")
         return redirect(url_for("admin"))
+
+    @app.route("/admin/export.csv")
+    @admin_required
+    def export_users_csv():
+        """Esporta la lista utenti in CSV (per contabilità / commercialista)."""
+        import csv
+        import io
+
+        subs = (
+            License.query.filter(~License.email.like("%@vcriptov.local"))
+            .order_by(License.created_at.desc()).all()
+        )
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(["Email", "Piano", "Prezzo EUR", "Pagato", "Bannato",
+                    "Influencer", "Scadenza", "Iscritto il"])
+        for s in subs:
+            w.writerow([
+                s.email, get_plan(s.plan)["name"], get_plan(s.plan)["price_eur"],
+                "si" if s.paid else "no", "si" if s.banned else "no",
+                s.influencer_name or "",
+                s.expires_at.strftime("%Y-%m-%d") if s.expires_at else "mai",
+                s.created_at.strftime("%Y-%m-%d") if s.created_at else "",
+            ])
+        fname = f"vcriptov-utenti-{datetime.utcnow():%Y%m%d}.csv"
+        return Response(
+            buf.getvalue(), mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={fname}"},
+        )
+
+    @app.route("/stato")
+    def service_status():
+        """Pagina pubblica di stato: bot, mercato e (se loggato) Telegram/Kraken."""
+        eng = get_engine()
+        bot_ok = bool(eng and eng.last_tick
+                      and (datetime.utcnow() - eng.last_tick).total_seconds() < 180)
+        prices = market.all_prices()
+        market_ok = any(v for v in prices.values())
+        checks = [
+            {"name": "Bot di trading", "ok": bot_ok,
+             "detail": "Attivo" if bot_ok else "In avvio o fermo"},
+            {"name": f"Dati di mercato ({MARKET_EXCHANGE.upper()})", "ok": market_ok,
+             "detail": "Prezzi in arrivo" if market_ok else "In connessione"},
+            {"name": "Pagamenti (Stripe)", "ok": bool(stripe.api_key),
+             "detail": "Configurato" if stripe.api_key else "Modalità demo"},
+        ]
+        return render_template("status.html", checks=checks,
+                               all_ok=all(c["ok"] for c in checks))
 
     # ---------- Dashboard ----------
     @app.route("/dashboard")

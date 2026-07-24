@@ -118,7 +118,10 @@
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h2>Abbonamenti attivi e provenienza</h2></div>
+      <div class="panel-head">
+        <h2>Abbonamenti attivi e provenienza</h2>
+        <a href="{{ url_for('export_users_csv') }}" class="btn btn-ghost btn-sm">⬇️ Esporta CSV</a>
+      </div>
       <div class="adm-tools">
         <input type="text" id="userSearch" class="adm-in" style="max-width:280px;"
                placeholder="🔎 Cerca per email…" oninput="filterUsers()" />

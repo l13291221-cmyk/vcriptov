@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Stato del servizio — VCriptoV{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="brand-row">
+    <div class="brand-logo">{% if all_ok %}✅{% else %}⚠️{% endif %}</div>
+    <div>
+      <div class="brand-name">Stato del servizio</div>
+      <div class="hint">{% if all_ok %}Tutti i sistemi funzionano{% else %}Alcuni sistemi si stanno avviando{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="status-list">
+    {% for c in checks %}
+    <div class="status-row">
+      <span class="status-dot {% if c.ok %}ok{% else %}ko{% endif %}"></span>
+      <span class="status-name">{{ c.name }}</span>
+      <span class="hint">{{ c.detail }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="hint" style="margin-top:18px;text-align:center;">
+    <a href="{{ url_for('index') }}">← Torna al sito</a>
+  </p>
+</div>
+{% endblock %}
