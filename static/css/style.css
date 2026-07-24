@@ -378,15 +378,22 @@ textarea.adm-in { width: 100%; resize: vertical; font-family: inherit; line-heig
    ===================================================================== */
 @media (max-width: 600px) {
   /* Pagine di accesso / paywall */
-  .auth-wrap { padding: 64px 14px 40px; }
+  .auth-wrap { padding: 16px 14px 40px; }
   .auth-card { padding: 22px 18px; margin: 3vh auto; }
   h1 { font-size: 21px; }
   .lead { font-size: 14px; }
 
-  /* Pulsanti in alto (compatti per non sovrapporsi) */
-  .support-btn { top: 12px; left: 12px; padding: 6px 10px; font-size: 12px; }
-  .top-right-btns { top: 12px; right: 12px; gap: 6px; }
-  .top-right-btns .creator-btn { padding: 6px 10px; font-size: 12px; }
+  /* Pulsanti in alto: sul telefono NON sono più assoluti (si sovrapponevano),
+     scorrono in un barra che va a capo da sola. */
+  .support-btn {
+    position: static; top: auto; left: auto; display: inline-flex;
+    margin: 0 0 10px; padding: 7px 12px; font-size: 12px;
+  }
+  .top-right-btns {
+    position: static; top: auto; right: auto; flex-wrap: wrap;
+    gap: 8px; margin: 0 0 18px;
+  }
+  .top-right-btns .creator-btn { padding: 7px 12px; font-size: 12px; }
 
   /* Piani abbonamento: una colonna, ben spaziati */
   .plan-grid { grid-template-columns: 1fr; gap: 14px; margin: 26px 0; }
