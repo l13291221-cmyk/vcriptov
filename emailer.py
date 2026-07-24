@@ -23,7 +23,9 @@ def email_configured() -> bool:
                 and os.environ.get("SMTP_PASSWORD"))
 
 
-def send_email(to: str, subject: str, body: str) -> bool:
+def send_email(to: str, subject: str, body: str, attachment: str | None = None) -> bool:
+    """Invia un'email. Se `attachment` è il percorso di un file esistente, lo
+    allega (usato per il backup del database inviato via email)."""
     if not to or not email_configured():
         return False
     host = os.environ["SMTP_HOST"]
@@ -37,6 +39,15 @@ def send_email(to: str, subject: str, body: str) -> bool:
     msg["From"] = sender
     msg["To"] = to
     msg.set_content(body)
+
+    if attachment and os.path.exists(attachment):
+        try:
+            with open(attachment, "rb") as fh:
+                data = fh.read()
+            msg.add_attachment(data, maintype="application", subtype="octet-stream",
+                               filename=os.path.basename(attachment))
+        except OSError:
+            pass
 
     try:
         if port == 465:

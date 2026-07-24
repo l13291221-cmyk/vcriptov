@@ -48,6 +48,7 @@ from market import MARKET_EXCHANGE, market
 from notify import send_telegram
 from emailer import email_configured, send_activation_email, send_email
 from models import (
+    AdminLog,
     EquityPoint,
     Influencer,
     InfluencerAccess,
@@ -94,6 +95,8 @@ def ensure_schema():
         "take_profit_pct": "FLOAT DEFAULT 15.0",
         "strategy": "VARCHAR(20) DEFAULT 'bilanciata'",
         "signal_symbols": "TEXT",
+        "notify_only": "BOOLEAN DEFAULT 0",
+        "welcome_sent": "BOOLEAN DEFAULT 0",
     }
     license_cols = {
         "paid": "BOOLEAN DEFAULT 0",
@@ -224,6 +227,24 @@ def reset_login_fails(bucket: str) -> None:
     _login_fails.pop(bucket, None)
 
 
+# Anti-abuso pagamenti: limita quanti tentativi di checkout può fare lo stesso IP,
+# per bloccare chi prova tante carte/email di fila (card testing / frodi).
+_checkout_hits: dict[str, list] = {}
+CHECKOUT_MAX = 8
+CHECKOUT_WINDOW = 3600  # 1 ora
+
+
+def checkout_rate_limited(ip: str) -> bool:
+    now = time.time()
+    hits = [t for t in _checkout_hits.get(ip, []) if now - t < CHECKOUT_WINDOW]
+    _checkout_hits[ip] = hits
+    return len(hits) >= CHECKOUT_MAX
+
+
+def record_checkout_hit(ip: str) -> None:
+    _checkout_hits.setdefault(ip, []).append(time.time())
+
+
 def needs_monthly_review(lic) -> bool:
     """True se il cliente deve lasciare la recensione di questo mese."""
     if session.get("is_admin") or session.get("is_influencer"):
@@ -257,6 +278,15 @@ def current_license():
     if not lic_id:
         return None
     return db.session.get(License, lic_id)
+
+
+def log_admin(action: str, email: str | None = None, detail: str | None = None):
+    """Registra un'azione del creatore nel log di sicurezza (best-effort)."""
+    try:
+        db.session.add(AdminLog(action=action, target_email=email, detail=detail))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 def login_required(view):
@@ -388,6 +418,13 @@ def register_routes(app: Flask):
         La licenza viene creata subito ma resta DISATTIVATA (active=False):
         diventa valida solo dopo la conferma del pagamento (rotta di successo).
         """
+        # Anti-frode: blocca chi tenta troppi pagamenti di fila dallo stesso IP.
+        ip = _client_ip()
+        if checkout_rate_limited(ip):
+            flash("Troppi tentativi di pagamento. Riprova tra un'ora o contatta l'assistenza.", "error")
+            return redirect(url_for("index"))
+        record_checkout_hit(ip)
+
         email = (request.form.get("email") or "").strip().lower()
         plan_id = (request.form.get("plan") or "").strip()
         plan = get_plan(plan_id)
@@ -1034,6 +1071,7 @@ def register_routes(app: Flask):
             user_details=user_details,
             influencer_history=InfluencerAccess.query.order_by(
                 InfluencerAccess.created_at.desc()).all(),
+            admin_log=AdminLog.query.order_by(AdminLog.created_at.desc()).limit(50).all(),
         )
 
     @app.route("/admin/save-influencers", methods=["POST"])
@@ -1085,6 +1123,7 @@ def register_routes(app: Flask):
                 lic.device_id = None
             lic.device_change_requested = False
             db.session.commit()
+            log_admin("unlock_device", lic.email, "Sbloccato accesso da nuovo dispositivo")
             flash(f"Accesso di {lic.email} sbloccato dal nuovo dispositivo.", "success")
         return redirect(url_for("admin"))
 
@@ -1101,6 +1140,7 @@ def register_routes(app: Flask):
             lic.expires_at = base + timedelta(days=SUBSCRIPTION_DAYS)
             lic.expiry_reminder_sent = False
             db.session.commit()
+            log_admin("extend", lic.email, "Abbonamento esteso di 30 giorni")
             flash(f"Abbonamento di {lic.email} esteso di 30 giorni.", "success")
         return redirect(url_for("admin"))
 
@@ -1117,8 +1157,10 @@ def register_routes(app: Flask):
             lic.banned = not lic.banned
             db.session.commit()
             if lic.banned:
+                log_admin("ban", lic.email, "Utente bannato dal sito")
                 flash(f"Utente {lic.email} BANNATO dal sito.", "success")
             else:
+                log_admin("unban", lic.email, "Utente riammesso")
                 flash(f"Utente {lic.email} riammesso.", "success")
         return redirect(url_for("admin"))
 
@@ -1232,7 +1274,10 @@ def register_routes(app: Flask):
                 s.signal_symbols = ",".join(chosen) if chosen and len(chosen) < len(allowed) else None
 
                 # 3) Trading reale: interruttore + tetto per ordine.
-                s.live_trading = request.form.get("live_trading") == "on"
+                # Modalità "solo notifiche": se accesa, il trading reale resta
+                # SPENTO comunque — zero rischio, solo segnali.
+                s.notify_only = request.form.get("notify_only") == "on"
+                s.live_trading = (request.form.get("live_trading") == "on") and not s.notify_only
                 try:
                     s.max_order_eur = max(1.0, min(float(request.form.get("max_order_eur", 20.0)), 100000.0))
                 except (ValueError, TypeError):
@@ -1250,6 +1295,26 @@ def register_routes(app: Flask):
                         s.slow_ma = s.fast_ma + 1
                 except (ValueError, TypeError):
                     flash("Parametri avanzati non validi, ignorati.", "error")
+
+            # Messaggio di BENVENUTO guidato: la prima volta che Telegram è
+            # collegato correttamente, il bot si presenta e spiega i prossimi passi.
+            tok = decrypt(s.telegram_token_enc)
+            if plan.get("telegram") and tok and s.telegram_chat_id and not s.welcome_sent:
+                ok = send_telegram(
+                    tok, s.telegram_chat_id,
+                    "👋 <b>Benvenuto/a su VCriptoV!</b>\n"
+                    "Telegram è collegato correttamente. 🎉\n\n"
+                    "Ecco come funziona:\n"
+                    "• Ti manderò qui i <b>segnali</b> con i tasti ✅ Investi / ❌ No.\n"
+                    "• Se hai attivato il <b>Trading reale</b>, toccando “Investi” l'ordine "
+                    "parte davvero sul tuo Kraken; altrimenti è solo informativo.\n"
+                    "• Dopo che investi, <b>sorveglio la posizione</b> e ti avviso se va "
+                    "molto in guadagno o in perdita.\n\n"
+                    "⚠️ <i>Non è consulenza finanziaria: valuta sempre tu. Puoi impostare "
+                    "la modalità “solo notifiche” per non rischiare soldi veri.</i>",
+                )
+                if ok:
+                    s.welcome_sent = True
 
             db.session.commit()
             flash("Impostazioni salvate.", "success")

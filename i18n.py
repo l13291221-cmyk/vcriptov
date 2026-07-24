@@ -247,6 +247,10 @@ TRANSLATIONS = {
               "take profit of the chosen strategy). You need Kraken API Key/Secret <b>with "
               "trading permission</b>. <b>Real money is at risk.</b> Start small.",
     },
+    "set_notify_only": {"it": "🔔 Solo notifiche (zero rischio, nessun ordine reale)",
+                        "en": "🔔 Notifications only (zero risk, no real orders)"},
+    "set_notify_only_hint": {"it": "Consigliato all'inizio: ricevi i segnali ma il bot NON esegue mai ordini con soldi veri, anche se il trading reale è acceso.",
+                             "en": "Recommended at first: you get the signals but the bot NEVER places real-money orders, even if real trading is on."},
     "set_real_toggle": {"it": "Attiva il trading reale (parte SPENTO)", "en": "Enable real trading (starts OFF)"},
     "set_max_order": {"it": "Importo massimo per ordine (€)", "en": "Maximum amount per order (€)"},
     "set_max_order_hint": {"it": "Tetto di spesa per ogni singolo investimento.", "en": "Spending cap for each individual investment."},

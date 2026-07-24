@@ -82,6 +82,7 @@ class TradingEngine:
         self.last_tick = datetime.utcnow()
         self.tick_count += 1
         self._maybe_backup()
+        self._maybe_offsite_backup()
 
     def _maybe_monthly_report(self, lic):
         """Una volta al mese manda per email il resoconto personale: quanto ha
@@ -165,6 +166,31 @@ class TradingEngine:
                     pass
         except Exception as exc:
             self.app.logger.warning("Backup DB non riuscito: %s", exc)
+
+    def _maybe_offsite_backup(self):
+        """Una volta a settimana invia il database via EMAIL al creatore, così una
+        copia resta anche FUORI dal server (se il server sparisce, i dati li hai).
+        Richiede l'email SMTP configurata; su Postgres non fa nulla."""
+        import os
+        from config import INSTANCE_DIR
+        from emailer import email_configured
+
+        db_file = INSTANCE_DIR / "vcriptov.db"
+        if not db_file.exists() or not email_configured():
+            return
+        now = datetime.utcnow()
+        last = getattr(self, "_last_offsite", None)
+        if last and (now - last).total_seconds() < 7 * 24 * 3600:
+            return
+        creator = os.environ.get("CREATOR_EMAIL", "assistenza.vcriptov@gmail.com")
+        ok = send_email(
+            creator, f"VCriptoV — Backup database {now:%d/%m/%Y}",
+            "In allegato la copia di sicurezza settimanale del database VCriptoV.\n"
+            "Conservala in un posto sicuro. — VCriptoV",
+            attachment=str(db_file),
+        )
+        if ok:
+            self._last_offsite = now
 
     def _update_signal_outcomes(self, lic, prices):
         """Track record: segna se un segnale ha raggiunto il take profit (win) o
@@ -548,6 +574,14 @@ class TradingEngine:
             return
 
         if action == "invest":
+            if getattr(settings, "notify_only", False):
+                answer_callback(token, cq_id, "Modalità solo notifiche attiva: nessun ordine reale")
+                if msg_id:
+                    edit_message(token, chat_id, msg_id,
+                                 "🔔 <b>Modalità solo notifiche</b> attiva: il bot non esegue "
+                                 "ordini reali. Se vuoi investire davvero, disattivala nelle "
+                                 "Impostazioni del sito. (Segnale solo informativo.)")
+                return
             if not settings.live_trading:
                 answer_callback(token, cq_id, "Attiva il Trading reale e collega Kraken per investire davvero")
                 if msg_id:

@@ -194,6 +194,28 @@
       </div>
     </div>
 
+    <div class="panel">
+      <div class="panel-head"><h2>🛡️ Log delle azioni (sicurezza)</h2></div>
+      <p class="hint">Cronologia delle azioni fatte dall'area Amministrazione: utile per capire cosa è stato fatto e quando.</p>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Quando</th><th>Azione</th><th>Utente</th><th>Dettaglio</th></tr></thead>
+          <tbody>
+            {% for l in admin_log %}
+            <tr>
+              <td class="hint">{{ l.created_at.strftime('%d/%m/%Y %H:%M') if l.created_at else '—' }}</td>
+              <td><span class="tag tag-pending">{{ l.action }}</span></td>
+              <td>{{ l.target_email or '—' }}</td>
+              <td class="hint">{{ l.detail or '' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty">Nessuna azione registrata</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Popup dettaglio andamento utente -->
     <div id="detailModal" class="modal-backdrop" style="display:none;" onclick="closeDetail(event)">
       <div class="modal-card" onclick="event.stopPropagation()">

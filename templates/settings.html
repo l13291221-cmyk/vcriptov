@@ -127,6 +127,11 @@
       <div class="panel danger-panel">
         <h2>{{ t('set_real') }}</h2>
         <p class="hint">{{ t('set_real_hint')|safe }}</p>
+        <div class="toggle-row" style="margin-bottom:12px;">
+          <input type="checkbox" name="notify_only" id="no" {% if s.notify_only %}checked{% endif %} />
+          <label for="no" style="margin:0;font-weight:700;">{{ t('set_notify_only') }}</label>
+        </div>
+        <p class="hint" style="margin-top:-6px;">{{ t('set_notify_only_hint') }}</p>
         <div class="toggle-row danger-toggle">
           <input type="checkbox" name="live_trading" id="lt" {% if s.live_trading %}checked{% endif %} />
           <label for="lt" style="margin:0;font-weight:700;">{{ t('set_real_toggle') }}</label>

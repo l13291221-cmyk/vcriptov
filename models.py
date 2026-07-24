@@ -75,6 +75,12 @@ class Setting(db.Model):
     strategy = db.Column(db.String(20), default="bilanciata")  # prudente/bilanciata/aggressiva
     signal_symbols = db.Column(db.Text, nullable=True)     # crypto scelte (vuoto = tutte)
 
+    # Modalità "solo notifiche": se True il bot NON esegue mai ordini reali,
+    # anche se il trading reale è acceso. Massima tranquillità per chi vuole
+    # solo ricevere i segnali senza rischiare soldi veri.
+    notify_only = db.Column(db.Boolean, default=False)
+    welcome_sent = db.Column(db.Boolean, default=False)  # messaggio di benvenuto Telegram già inviato
+
     # --- TRADING REALE con soldi veri sul conto Kraken del cliente ---
     # SPENTO per default: va acceso a mano e con piena consapevolezza.
     live_trading = db.Column(db.Boolean, default=False)
@@ -192,6 +198,19 @@ class PriceAlert(db.Model):
     target = db.Column(db.Float, nullable=False)
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class AdminLog(db.Model):
+    """Registro delle azioni del creatore nell'area Amministrazione (sicurezza):
+    ban/sblocco, sblocco dispositivo, estensione abbonamento, ecc."""
+
+    __tablename__ = "admin_log"
+
+    id = db.Column(db.Integer, primary_key=True)
+    action = db.Column(db.String(40), nullable=False)     # es. "ban", "unban", "unlock_device"
+    target_email = db.Column(db.String(255), nullable=True)
+    detail = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
 class InfluencerAccess(db.Model):
