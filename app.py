@@ -49,6 +49,7 @@ from emailer import email_configured, send_activation_email, send_email
 from models import (
     EquityPoint,
     Influencer,
+    InfluencerAccess,
     License,
     PriceAlert,
     Portfolio,
@@ -844,6 +845,9 @@ def register_routes(app: Flask):
             name = (request.form.get("name") or "").strip()
             pw = (request.form.get("password") or "").strip()
             phone = (request.form.get("phone") or "").strip()
+            if not phone:
+                flash("Inserisci il tuo numero di telefono per accedere.", "error")
+                return redirect(url_for("influencer_login"))
             match = None
             for inf in Influencer.query.all():
                 if inf.name.strip().lower() == name.lower() and inf.password_enc:
@@ -852,9 +856,17 @@ def register_routes(app: Flask):
                         break
             if match:
                 lic = ensure_influencer_license(match.slot)
-                if phone:
-                    lic.recovery_phone = phone[:40]  # telefono per il recupero
-                    db.session.commit()
+                lic.recovery_phone = phone[:40]  # telefono per il recupero
+                # Cronologia accessi: salva nome + telefono. Niente doppioni per
+                # la stessa coppia nome+telefono; i vecchi restano anche se in
+                # seguito rinomini lo slot.
+                already = InfluencerAccess.query.filter_by(
+                    name=match.name, phone=phone[:40]
+                ).first()
+                if not already:
+                    db.session.add(InfluencerAccess(
+                        slot=match.slot, name=match.name, phone=phone[:40]))
+                db.session.commit()
                 session.clear()
                 session["license_id"] = lic.id
                 session["is_influencer"] = True
@@ -1019,6 +1031,8 @@ def register_routes(app: Flask):
             avg_by_coin=avg_by_coin,
             avg_earn_per_user=avg_earn_per_user,
             user_details=user_details,
+            influencer_history=InfluencerAccess.query.order_by(
+                InfluencerAccess.created_at.desc()).all(),
         )
 
     @app.route("/admin/save-influencers", methods=["POST"])

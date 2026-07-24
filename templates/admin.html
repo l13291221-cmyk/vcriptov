@@ -95,6 +95,29 @@
     </div>
 
     <div class="panel">
+      <div class="panel-head"><h2>📇 Cronologia accessi influencer</h2></div>
+      <p class="hint">Ogni influencer, al primo accesso, lascia <b>nome</b> e <b>numero di telefono</b>:
+      restano salvati qui per sempre, anche se in seguito rinomini o cambi lo slot.</p>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Nome</th><th>Telefono</th><th>Slot</th><th>Primo accesso</th></tr></thead>
+          <tbody>
+            {% for h in influencer_history %}
+            <tr>
+              <td><b>{{ h.name }}</b></td>
+              <td>{{ h.phone or '—' }}</td>
+              <td>{{ h.slot if h.slot else '—' }}</td>
+              <td class="hint">{{ h.created_at.strftime('%d/%m/%Y %H:%M') if h.created_at else '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty">Ancora nessun accesso influencer registrato</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
       <div class="panel-head"><h2>Abbonamenti attivi e provenienza</h2></div>
       <div class="adm-tools">
         <input type="text" id="userSearch" class="adm-in" style="max-width:280px;"

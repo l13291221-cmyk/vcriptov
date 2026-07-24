@@ -194,6 +194,19 @@ class PriceAlert(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class InfluencerAccess(db.Model):
+    """Cronologia degli accessi degli influencer: nome + telefono salvati al
+    primo accesso. Restano qui anche se in seguito rinomini o cambi lo slot."""
+
+    __tablename__ = "influencer_access"
+
+    id = db.Column(db.Integer, primary_key=True)
+    slot = db.Column(db.Integer, nullable=True)          # slot usato al momento dell'accesso
+    name = db.Column(db.String(120), nullable=False)     # nome fotografato all'accesso
+    phone = db.Column(db.String(40), nullable=True)      # telefono inserito
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
 class Review(db.Model):
     """Recensione lasciata da un cliente (obbligatoria una volta al mese)."""
 
