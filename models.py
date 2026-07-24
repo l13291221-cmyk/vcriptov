@@ -156,6 +156,8 @@ class Influencer(db.Model):
     discount_code = db.Column(db.String(60), nullable=True)   # codice sconto dell'influencer
     discount_pct = db.Column(db.Float, default=0.0)          # % di sconto del codice
     discount_expires = db.Column(db.Date, nullable=True)     # scadenza del codice (vuoto = non scade)
+    commission_pct = db.Column(db.Float, default=0.0)        # % che il creatore deve pagare all'influencer
+    collab_start = db.Column(db.Date, nullable=True)         # data d'inizio della collaborazione
 
 
 class Signal(db.Model):

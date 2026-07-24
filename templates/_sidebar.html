@@ -21,6 +21,11 @@
       {{ t('nav_admin') }}
     </a>
     {% endif %}
+    {% if is_influencer %}
+    <a href="{{ url_for('influencer_earnings') }}" class="nav-link {% if request.endpoint == 'influencer_earnings' %}active{% endif %}">
+      💸 I miei guadagni
+    </a>
+    {% endif %}
     <a href="{{ url_for('logout') }}" class="nav-link">{{ t('nav_logout') }}</a>
     <div class="side-foot">
       <span class="lang-switch" style="margin-bottom:8px;">

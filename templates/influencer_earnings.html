@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}I miei guadagni — VCriptoV{% endblock %}
+{% block body_class %}app-body{% endblock %}
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="app">
+  {% include "_sidebar.html" %}
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1>💸 I miei guadagni</h1>
+        <div class="hint">Ciao {{ payout.name }} · commissione concordata {{ payout.pct }}%{% if payout.collab_start %} · dal {{ payout.collab_start }}{% endif %}</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="label">Guadagno questo mese</div>
+        <div class="value pos">{{ "%.2f"|format(payout.owed_month) }}€</div>
+        <div class="sub">sugli abbonati ancora attivi</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Guadagno totale (stima)</div>
+        <div class="value">{{ "%.2f"|format(payout.owed_total) }}€</div>
+        <div class="sub">dall'inizio della collaborazione</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Utenti attivi ora</div>
+        <div class="value">{{ payout.users_active }}</div>
+        <div class="sub">Portati questo mese: {{ payout.users_month }}</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Utenti portati in totale</div>
+        <div class="value">{{ payout.users_total }}</div>
+        <div class="sub">da quando collabori</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Utenti portati per mese</h2></div>
+      <div class="chart-box"><canvas id="earnChart"></canvas></div>
+    </div>
+
+    <div class="risk-banner">
+      ℹ️ I guadagni sono <b>stime</b> basate sugli abbonati attivi arrivati da te: se un
+      utente disdice, smette di contare. Il pagamento effettivo lo gestisce il creatore.
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const data = {{ payout.by_month|tojson }};
+  new Chart(document.getElementById("earnChart"), {
+    type: "bar",
+    data: { labels: Object.keys(data), datasets: [{ data: Object.values(data), backgroundColor: "#4f8cff", borderRadius: 6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: "#8a97b1" }, grid: { display: false } },
+        y: { ticks: { color: "#8a97b1", precision: 0 }, grid: { color: "rgba(37,48,73,.5)" }, beginAtZero: true },
+      },
+    },
+  });
+</script>
+{% endblock %}

@@ -75,7 +75,7 @@
       <form method="POST" action="{{ url_for('save_influencers') }}">
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr><th>#</th><th>Nome</th><th>Password</th><th>Codice sconto</th><th>% sconto</th><th>Scadenza codice</th></tr></thead>
+            <thead><tr><th>#</th><th>Nome</th><th>Password</th><th>Codice sconto</th><th>% sconto</th><th>Scadenza codice</th><th>% commissione</th><th>Inizio collab.</th><th>Guadagni</th></tr></thead>
             <tbody>
               {% for i in inf_access %}
               <tr>
@@ -83,8 +83,11 @@
                 <td><input type="text" name="name_{{ i.slot }}" value="{{ i.name }}" class="adm-in" /></td>
                 <td><input type="text" name="password_{{ i.slot }}" value="{{ i.password }}" placeholder="(nessuna)" class="adm-in" /></td>
                 <td><input type="text" name="code_{{ i.slot }}" value="{{ i.code }}" placeholder="es. MARIO10" class="adm-in" /></td>
-                <td><input type="number" name="pct_{{ i.slot }}" value="{{ i.pct }}" min="0" max="100" step="1" class="adm-in" style="max-width:90px;" /></td>
-                <td><input type="date" name="expires_{{ i.slot }}" value="{{ i.expires }}" class="adm-in" style="max-width:160px;" title="Vuoto = il codice non scade" /></td>
+                <td><input type="number" name="pct_{{ i.slot }}" value="{{ i.pct }}" min="0" max="100" step="1" class="adm-in" style="max-width:80px;" /></td>
+                <td><input type="date" name="expires_{{ i.slot }}" value="{{ i.expires }}" class="adm-in" style="max-width:150px;" title="Vuoto = il codice non scade" /></td>
+                <td><input type="number" name="commission_{{ i.slot }}" value="{{ i.commission }}" min="0" max="100" step="1" class="adm-in" style="max-width:80px;" title="% degli abbonamenti da pagare all'influencer" /></td>
+                <td><input type="date" name="collab_{{ i.slot }}" value="{{ i.collab }}" class="adm-in" style="max-width:150px;" title="Data inizio collaborazione" /></td>
+                <td><button type="button" class="btn btn-ghost btn-sm" onclick="openPayout({{ i.slot }})" title="Vedi quanto gli devi">⋮ Vedi</button></td>
               </tr>
               {% endfor %}
             </tbody>
@@ -226,6 +229,18 @@
         <div id="dBody"></div>
       </div>
     </div>
+
+    <!-- Popup guadagni influencer -->
+    <div id="payoutModal" class="modal-backdrop" style="display:none;" onclick="closePayout(event)">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="panel-head">
+          <h2 id="pTitle">Guadagni influencer</h2>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="closePayout()">✕</button>
+        </div>
+        <div id="pBody"></div>
+        <div class="chart-box" style="height:200px;margin-top:10px;"><canvas id="payoutChart"></canvas></div>
+      </div>
+    </div>
   </main>
 </div>
 {% endblock %}
@@ -295,6 +310,34 @@
     document.getElementById("detailModal").style.display = "flex";
   }
   function closeDetail(e) { document.getElementById("detailModal").style.display = "none"; }
+
+  // Guadagni influencer (popup ⋮)
+  const PAYOUTS = {{ inf_payouts|tojson }};
+  let payoutChart = null;
+  function openPayout(slot) {
+    const d = PAYOUTS[slot];
+    if (!d) return;
+    document.getElementById("pTitle").textContent = "Guadagni · " + d.name;
+    const e2 = (n) => n.toFixed(2) + "€";
+    document.getElementById("pBody").innerHTML = `
+      <div class="community-row"><span>💰 Da pagargli QUESTO mese</span><b class="pos">${e2(d.owed_month)}</b></div>
+      <div class="community-row"><span>Totale stimato dall'inizio</span><b>${e2(d.owed_total)}</b></div>
+      <div class="community-row community-sub"><span>Percentuale concordata</span><b>${d.pct}%</b></div>
+      <div class="community-row community-sub"><span>Inizio collaborazione</span><b>${d.collab_start || "—"}</b></div>
+      <div class="community-row"><span>Utenti attivi ora (che rendono)</span><b>${d.users_active}</b></div>
+      <div class="community-row community-sub"><span>Portati questo mese</span><b>${d.users_month}</b></div>
+      <div class="community-row community-sub"><span>Portati in totale</span><b>${d.users_total}</b></div>
+      <p class="hint" style="margin-top:10px;">Stima basata sugli abbonati attivi arrivati da lui. Se un utente disdice, smette di contare.</p>`;
+    const labels = Object.keys(d.by_month), vals = Object.values(d.by_month);
+    if (payoutChart) payoutChart.destroy();
+    payoutChart = new Chart(document.getElementById("payoutChart"), {
+      type: "bar",
+      data: { labels, datasets: [{ data: vals, backgroundColor: "#4f8cff", borderRadius: 6 }] },
+      options: barOpts,
+    });
+    document.getElementById("payoutModal").style.display = "flex";
+  }
+  function closePayout(e) { document.getElementById("payoutModal").style.display = "none"; }
 
   // Ricerca + filtro nella tabella utenti
   let activeFilter = "all";

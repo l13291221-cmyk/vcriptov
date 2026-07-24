@@ -139,6 +139,8 @@ def ensure_schema():
                 "discount_code": "VARCHAR(60)",
                 "discount_pct": "FLOAT DEFAULT 0",
                 "discount_expires": "DATE",
+                "commission_pct": "FLOAT DEFAULT 0",
+                "collab_start": "DATE",
             }.items():
                 if col not in existing_i:
                     conn.execute(text(f"ALTER TABLE influencers ADD COLUMN {col} {ddl}"))
@@ -289,6 +291,96 @@ def log_admin(action: str, email: str | None = None, detail: str | None = None):
         db.session.rollback()
 
 
+def _monthly_value(plan_dict) -> float | None:
+    """Valore MENSILE di un piano per il calcolo commissioni. I piani annuali
+    valgono price/12 al mese; i Lifetime (pagamento unico) tornano None e vengono
+    contati una volta sola (nel mese d'iscrizione)."""
+    if not plan_dict:
+        return 0.0
+    if plan_dict.get("lifetime"):
+        return None
+    per_year = 12 if plan_dict.get("interval") == "year" else 1
+    return (plan_dict.get("price_eur") or 0) / per_year
+
+
+def influencer_payout(inf) -> dict:
+    """Calcola quanto il creatore deve all'influencer.
+
+    Ogni MESE, per ogni utente ancora abbonato e pagante arrivato da lui (dopo la
+    data d'inizio collaborazione), l'influencer prende la sua percentuale su quanto
+    l'utente paga quel mese. Se l'utente disdice, smette di contare."""
+    from collections import OrderedDict
+
+    pct = (inf.commission_pct or 0) / 100.0
+    start = inf.collab_start
+    now = datetime.utcnow()
+    cur_month = now.strftime("%Y-%m")
+
+    subs = [
+        s for s in License.query.filter_by(influencer_slot=inf.slot, paid=True).all()
+        if not s.email.endswith("@vcriptov.local")
+        and (not start or (s.created_at and s.created_at.date() >= start))
+    ]
+    active_now = [s for s in subs if s.active and not is_expired(s) and not s.banned]
+    users_month = [s for s in subs if s.created_at and s.created_at.strftime("%Y-%m") == cur_month]
+
+    # Da pagare QUESTO mese: la % su ogni abbonato attivo adesso.
+    owed_month = 0.0
+    for s in active_now:
+        p = get_plan(s.plan)
+        mv = _monthly_value(p)
+        if mv is None:  # Lifetime: conta solo nel mese in cui si è iscritto
+            if s.created_at and s.created_at.strftime("%Y-%m") == cur_month:
+                owed_month += (p.get("price_eur") or 0) * pct
+        else:
+            owed_month += mv * pct
+
+    # Stima TOTALE dall'inizio: mesi di abbonamento × valore mensile × %.
+    total = 0.0
+    for s in subs:
+        p = get_plan(s.plan)
+        mv = _monthly_value(p)
+        if not s.created_at:
+            continue
+        s_start = s.created_at.date()
+        if start and start > s_start:
+            s_start = start
+        if mv is None:
+            total += (p.get("price_eur") or 0) * pct
+        else:
+            end = now.date()
+            if s.expires_at and s.expires_at.date() < end:
+                end = s.expires_at.date()
+            months = (end.year - s_start.year) * 12 + (end.month - s_start.month) + 1
+            total += max(0, months) * mv * pct
+
+    # Grafico: utenti portati per mese (ultimi 6 mesi).
+    by_month = OrderedDict()
+    today = now.replace(day=1)
+    for k in range(5, -1, -1):
+        y = today.year + (today.month - 1 - k) // 12
+        m = (today.month - 1 - k) % 12 + 1
+        by_month[f"{m:02d}/{y}"] = 0
+    for s in subs:
+        if s.created_at:
+            lbl = s.created_at.strftime("%m/%Y")
+            if lbl in by_month:
+                by_month[lbl] += 1
+
+    return {
+        "name": inf.name,
+        "slot": inf.slot,
+        "pct": inf.commission_pct or 0,
+        "collab_start": start.strftime("%d/%m/%Y") if start else None,
+        "users_month": len(users_month),
+        "users_active": len(active_now),
+        "users_total": len(subs),
+        "owed_month": round(owed_month, 2),
+        "owed_total": round(total, 2),
+        "by_month": dict(by_month),
+    }
+
+
 def login_required(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
@@ -367,6 +459,7 @@ def register_routes(app: Flask):
         return {
             "now": datetime.utcnow(), "plans": PLANS, "asset_v": ASSET_VERSION,
             "is_admin": session.get("is_admin", False),
+            "is_influencer": session.get("is_influencer", False),
             "lang": lang,
             "t": lambda key: translate(lang, key),
         }
@@ -908,6 +1001,7 @@ def register_routes(app: Flask):
                 session.clear()
                 session["license_id"] = lic.id
                 session["is_influencer"] = True
+                session["influencer_slot"] = match.slot
                 flash(f"Benvenuto/a {match.name}! Accesso anteprima attivo.", "success")
                 return clear_logout(redirect(url_for("dashboard")))
             flash("Nome o password non validi.", "error")
@@ -923,9 +1017,13 @@ def register_routes(app: Flask):
         inf_access = [
             {"slot": i.slot, "name": i.name, "password": decrypt(i.password_enc),
              "code": i.discount_code or "", "pct": i.discount_pct or 0,
-             "expires": i.discount_expires.strftime("%Y-%m-%d") if i.discount_expires else ""}
+             "expires": i.discount_expires.strftime("%Y-%m-%d") if i.discount_expires else "",
+             "commission": i.commission_pct or 0,
+             "collab": i.collab_start.strftime("%Y-%m-%d") if i.collab_start else ""}
             for i in inf_objs
         ]
+        # Dati commissioni per il popup ⋮ di ogni influencer.
+        inf_payouts = {i.slot: influencer_payout(i) for i in inf_objs}
         # Escludo gli account di servizio (creatore + anteprime influencer).
         subs = (
             License.query.filter(
@@ -1072,6 +1170,7 @@ def register_routes(app: Flask):
             influencer_history=InfluencerAccess.query.order_by(
                 InfluencerAccess.created_at.desc()).all(),
             admin_log=AdminLog.query.order_by(AdminLog.created_at.desc()).limit(50).all(),
+            inf_payouts=inf_payouts,
         )
 
     @app.route("/admin/save-influencers", methods=["POST"])
@@ -1101,6 +1200,18 @@ def register_routes(app: Flask):
                     pass
             else:
                 inf.discount_expires = None  # campo vuoto = il codice non scade
+            try:
+                inf.commission_pct = max(0.0, min(float(request.form.get(f"commission_{slot}", 0) or 0), 100.0))
+            except (ValueError, TypeError):
+                pass
+            collab_raw = (request.form.get(f"collab_{slot}") or "").strip()
+            if collab_raw:
+                try:
+                    inf.collab_start = datetime.strptime(collab_raw, "%Y-%m-%d").date()
+                except ValueError:
+                    pass
+            else:
+                inf.collab_start = None
         db.session.commit()
         flash("Influencer aggiornati (nomi, password, codici sconto).", "success")
         return redirect(url_for("admin"))
@@ -1587,6 +1698,24 @@ def register_routes(app: Flask):
             "classifica.html",
             rows=rows[:10],
             plan=get_plan(current_license().plan),
+            license=current_license(),
+        )
+
+    @app.route("/i-guadagni")
+    @login_required
+    def influencer_earnings():
+        """Schermata guadagni per l'influencer loggato: quanto ha guadagnato questo
+        mese, in totale, quanti utenti ha portato e il grafico mese per mese."""
+        if not session.get("is_influencer"):
+            return redirect(url_for("dashboard"))
+        slot = session.get("influencer_slot")
+        inf = db.session.get(Influencer, slot) if slot else None
+        if not inf:
+            return redirect(url_for("dashboard"))
+        return render_template(
+            "influencer_earnings.html",
+            payout=influencer_payout(inf),
+            plan=get_plan("lifetime"),
             license=current_license(),
         )
 
